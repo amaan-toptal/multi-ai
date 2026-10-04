@@ -79,3 +79,30 @@ branching/rollback UI beyond read-only time travel; per-variant git repos.
 ### Prompt set added
 Determinism: random number with/without deterministic mode; ticket triage free text vs rules/JSON; production runbook
 free-form vs fixed template. Games: fun game < 2 KB, puzzle game < 3 KB, action game < 4 KB. Fun: tell me a joke.
+
+---
+
+## v0.1.2 — 2026-10-04 — timestamps, master ledger, time travel, debates (prompt 0004)
+
+### Change to the plan
+- **Every record carries one instant in three forms:** `unix` (seconds), `iso`, `human` (RFC 1123 UTC). Applied to
+  `run.json`, `meta.json` (start and finish), every line of `events.jsonl` (`t` ms + `iso`), and a git trailer
+  `Timestamp: <unix> (<iso>)` on every commit message. The playground log shows the same pair.
+- **Master ledger.** The workspace repo gains `ledger.jsonl`: one line per event with only timestamp, prompt, models,
+  output files (plus run/variant ids to join on). This is the "master repo" view; thinking, events and artifacts stay in
+  the per-run / per-variant trees (and later, per-variant repos). `GET /api/workspaces/:ws/ledger` serves it.
+- **Time travel simulator (playground):** a second view replays a scripted hour of one workspace from its ledger with a
+  continuous slider, play/pause at 30×/120×/600×, an SVG timeline of typed events (prompt, run, configuration, model
+  change, MCP tool, agent debate), and three live panels: prompt as a word diff against the previous version,
+  configuration (models with per-model MCP tools, web access toggle), and output-file tiles. The ledger rail shows every
+  event with human + unix time and the prompt diff.
+- **Multi-agent debates as first-class events.** Three agents (Planner / Critic / Builder on different models) negotiate
+  the prompt, the configuration and the outcome; each debate is an event with turns, proposals (shown as prompt diffs) and
+  a resolution committed as `debates/round-N.md`. Planned for the real app: a `debate` run type whose turns are ordinary
+  variant calls with the transcript as shared context, resolution written to the ledger.
+
+### Ledger line format
+```json
+{"unix":1791127835,"iso":"2026-10-04T15:30:35.128Z","human":"Sun, 04 Oct 2026 15:30:35 UTC",
+ "event":"prompt|variant|debate|config","run":"<run-id>","variant":"v1","prompt":"...","models":["claude-opus-5-5"],"outputs":["runs/.../response.md"]}
+```

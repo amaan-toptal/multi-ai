@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MODELS, EFFORTS, modelInfo, runVariant, verifyKey } from "./providers/anthropic.js";
 import { extractArtifacts } from "./artifacts.js";
-import { commitFiles, ensureRepo, listRuns, loadRun, sanitizeWorkspace, workspaceLog } from "./gitstore.js";
+import { commitFiles, ensureRepo, listRuns, loadRun, readLedger, sanitizeWorkspace, workspaceLog } from "./gitstore.js";
+import { stamp, stampTrailer } from "./timestamps.js";
 import { EXAMPLES } from "./examples.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -67,7 +68,7 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "prompt";
 }
 
-function stamp(d = new Date()) {
+function fileStamp(d = new Date()) {
   return d.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
 }
 
@@ -95,10 +96,12 @@ app.post("/api/runs", async (req, res) => {
     });
   }
 
-  const createdAt = new Date().toISOString();
-  const runId = `${stamp()}-${slugify(prompt)}-${crypto.randomBytes(2).toString("hex")}`;
+  const now = stamp();
+  const createdAt = now.iso;
+  const runId = `${fileStamp()}-${slugify(prompt)}-${crypto.randomBytes(2).toString("hex")}`;
   const run = {
-    id: runId, createdAt, workspace: ws, promptPreview: prompt.slice(0, 200),
+    id: runId, createdAt, createdAtUnix: now.unix, createdAtHuman: now.human,
+    workspace: ws, promptPreview: prompt.slice(0, 200),
     orchestrator: { app: "multi-ai", version: VERSION },
     variants: variants.map(({ id, label, model, provider, effort, webSearch, system, dir }) => ({ id, label, model, provider, effort, webSearch, system, dir })),
   };
@@ -108,7 +111,8 @@ app.post("/api/runs", async (req, res) => {
     await commitFiles(ws, {
       [`runs/${runId}/prompt.md`]: prompt + "\n",
       [`runs/${runId}/run.json`]: JSON.stringify(run, null, 2) + "\n",
-    }, `Prompt ${runId}\n\n${prompt.slice(0, 500)}`);
+      "ledger.jsonl": { append: JSON.stringify({ ...now, event: "prompt", run: runId, prompt, models: variants.map((v) => v.model), outputs: [] }) + "\n" },
+    }, `Prompt ${runId}\n\n${prompt.slice(0, 500)}\n\n${stampTrailer(now)}`);
   } catch (err) {
     return res.status(500).json({ error: `Could not record run: ${err.message}` });
   }
@@ -131,10 +135,11 @@ app.post("/api/runs", async (req, res) => {
 });
 
 async function executeVariant({ ws, runId, v, prompt, key, broadcast, state }) {
-  const startedAt = new Date().toISOString();
+  const started = stamp();
+  const startedAt = started.iso;
   const events = [];
   const emit = (ev) => {
-    const stamped = { ...ev, t: Date.now() };
+    const stamped = { ...ev, t: Date.now(), iso: new Date().toISOString() };
     if (ev.type !== "thinking" && ev.type !== "text") events.push(stamped);
     broadcast({ variant: v.id, ...stamped });
   };
@@ -153,8 +158,9 @@ async function executeVariant({ ws, runId, v, prompt, key, broadcast, state }) {
   const text = result?.text || "";
   const artifacts = extractArtifacts(text);
   if (artifacts.length) emit({ type: "artifacts", artifacts });
+  const finished = stamp();
   const meta = {
-    ...v, startedAt, finishedAt: new Date().toISOString(),
+    ...v, startedAt, startedAtUnix: started.unix, finishedAt: finished.iso, finishedAtUnix: finished.unix, finishedAtHuman: finished.human,
     status: error ? "error" : "done", error: error || null,
     servedModel: result?.servedModel || null, stopReason: result?.stopReason || null,
     usage: result?.usage || null, estimatedCostUsd: result ? Number(result.cost.toFixed(6)) : null,
@@ -169,8 +175,10 @@ async function executeVariant({ ws, runId, v, prompt, key, broadcast, state }) {
     [`${base}/events.jsonl`]: events.map((e) => JSON.stringify(e)).join("\n") + "\n",
   };
   for (const a of artifacts) files[`${base}/artifacts/${a.name}`] = a.content;
+  const outputs = [`${base}/response.md`, ...artifacts.map((a) => `${base}/artifacts/${a.name}`)];
+  files["ledger.jsonl"] = { append: JSON.stringify({ ...finished, event: "variant", run: runId, variant: v.id, prompt: prompt.slice(0, 200), models: [meta.servedModel || v.model], outputs }) + "\n" };
   try {
-    const sha = await commitFiles(ws, files, `${v.label}: ${meta.status} (${runId})`);
+    const sha = await commitFiles(ws, files, `${v.label}: ${meta.status} (${runId})\n\n${stampTrailer(finished)}`);
     emit({ type: "committed", sha });
   } catch (err) {
     emit({ type: "error", message: `Git commit failed: ${err.message}` });
@@ -207,6 +215,10 @@ app.get("/api/workspaces/:ws/runs/:id", async (req, res) => {
     if (!run) return res.status(404).json({ error: "Not found" });
     res.json(run);
   } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.get("/api/workspaces/:ws/ledger", async (req, res) => {
+  try { res.json(await readLedger(req.params.ws)); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get("/api/workspaces/:ws/log", async (req, res) => {

@@ -95,3 +95,29 @@ Repo: `node docs/demo/build.mjs` after editing any file in `docs/demo/games/`.
 1. Real reprompt endpoint + take tabs in the app (spec v0.1.1).
 2. Optional per-variant JSON schema (structured output) so the triage example is enforced, not just requested.
 3. Still open: real-API smoke test (E-04/E-08), append-only CI verifier, block force pushes (owner TODO).
+
+---
+
+## Session 1, part 4 — 2026-10-04 — timestamps, master ledger, time travel, debates (model: Fable 5.1)
+
+**Prompt:** [prompts/0004-2026-10-04-timestamps-time-travel-debates.md](prompts/0004-2026-10-04-timestamps-time-travel-debates.md)
+
+### What changed
+- Real app: `server/timestamps.js` (`stamp()` → unix/iso/human, `stampTrailer()`); run.json, meta.json and events carry
+  all three; every commit message ends with `Timestamp: <unix> (<iso>)`; `ledger.jsonl` master index appended in the
+  same commit as each prompt/variant; `GET /api/workspaces/:ws/ledger`; `/log` returns unix per commit.
+- Playground: new **Time travel** view (top bar switch, `#time` link) with slider, play/pause, SVG event timeline,
+  prompt-diff / configuration / output-file panels, debate panel with three agents, and a master-ledger rail showing the
+  prompt evolving. Playground git log rows now show `YYYY-MM-DD HH:MM:SS UTC · unix`.
+- Sources: `docs/demo/src/timetravel.{js,css}`, inlined by `node docs/demo/build.mjs` (same as the games).
+- Artifact republished at the same URL: https://claude.ai/artifact/TUUVzNgDhvxyg9xHC97riE (open, click **Time travel**).
+
+### How to verify
+Artifact → Time travel → press ▶ Play, or step with ◀ ▶ (arrow keys work). Stop on a magenta **D** node to see a
+debate. Drag to the end: 18 files, web off, tools per model, ★ on the release file.
+Repo: `npm test`; `npm start`, run anything, then `cat data/workspaces/default/ledger.jsonl` and `git log -1` in it.
+
+### Next steps
+1. Real debate runs (spec v0.1.2) and a real replay view over `ledger.jsonl` + git history.
+2. Extend the append-only CI verifier (still TODO) to cover `ledger.jsonl`.
+3. Unchanged: real-API smoke test, per-variant repos, block force pushes (owner TODO).

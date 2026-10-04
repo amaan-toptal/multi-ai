@@ -107,18 +107,150 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .spacer { flex: 1; }
 #frame { flex: 1; border: 0; width: 100%; background: #111; }
 #src { flex: 1; margin: 0; padding: 12px; overflow: auto; background: var(--code); font: 12px/1.45 var(--font-mono); }
+/* @tt-css-begin */
+/* ---- Time travel simulator ---- */
+/* Event kinds use the validated categorical palette (fixed slot order); a glyph letter always accompanies the colour. */
+:root {
+  --k-prompt: #2a78d6; --k-run: #008300; --k-config: #eb6834; --k-model: #1baf7a; --k-tool: #eda100; --k-debate: #e87ba4;
+  --m-opus: #2a78d6; --m-sonnet: #1baf7a; --m-fable: #e87ba4; --m-haiku: #eda100; --m-other: #8a8880;
+  --ins-bg: #d8f0d2; --ins-fg: #0b4d12; --del-bg: #f6d6d3; --del-fg: #7a1f17;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --k-prompt: #3987e5; --k-run: #008300; --k-config: #d95926; --k-model: #199e70; --k-tool: #c98500; --k-debate: #d55181;
+  --m-opus: #3987e5; --m-sonnet: #199e70; --m-fable: #d55181; --m-haiku: #c98500; --m-other: #8a8880;
+  --ins-bg: #1f4a22; --ins-fg: #c9f2c4; --del-bg: #5a2420; --del-fg: #f6c9c4; } }
+:root[data-theme="dark"] {
+  --k-prompt: #3987e5; --k-run: #008300; --k-config: #d95926; --k-model: #199e70; --k-tool: #c98500; --k-debate: #d55181;
+  --m-opus: #3987e5; --m-sonnet: #199e70; --m-fable: #d55181; --m-haiku: #c98500; --m-other: #8a8880;
+  --ins-bg: #1f4a22; --ins-fg: #c9f2c4; --del-bg: #5a2420; --del-fg: #f6c9c4; }
+
+.k-prompt { --k: var(--k-prompt); } .k-run { --k: var(--k-run); } .k-config { --k: var(--k-config); }
+.k-model { --k: var(--k-model); } .k-tool { --k: var(--k-tool); } .k-debate { --k: var(--k-debate); }
+.m-opus { --m: var(--m-opus); } .m-sonnet { --m: var(--m-sonnet); } .m-fable { --m: var(--m-fable); } .m-haiku { --m: var(--m-haiku); } .m-other { --m: var(--m-other); }
+[hidden] { display: none !important; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.viewnav { display: flex; gap: 4px; background: var(--soft); border-radius: 8px; padding: 3px; }
+.viewnav button { border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+.viewnav button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.tt { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; padding-top: 16px; }
+@media (max-width: 1000px) { .tt { grid-template-columns: minmax(0, 1fr); } }
+.tt-clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+.tt-clock .big { font-size: 26px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.tt-clock .unix { font-size: 15px; color: var(--muted); }
+.tt-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.tt-controls select { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.tt-track { position: relative; margin-top: 10px; }
+#ttSvg { width: 100%; height: 92px; display: block; overflow: visible; }
+.tt-axis { stroke: var(--line); stroke-width: 2; }
+.tt-tick { stroke: var(--line); }
+.tt-ticklabel { fill: var(--muted); font: 11px var(--font-mono); }
+.tt-node { cursor: pointer; }
+.tt-node circle { fill: var(--k); stroke: var(--panel); stroke-width: 2; transition: r .15s; }
+.tt-node text { fill: #fff; font: 700 10px var(--font-ui); pointer-events: none; }
+.tt-node.future circle { fill: var(--panel); stroke: var(--k); }
+.tt-node.future text { fill: var(--k); }
+.tt-node:hover circle, .tt-node:focus-visible circle { r: 11; }
+.tt-node:focus-visible { outline: none; }
+.tt-stem { stroke: var(--k); stroke-width: 1.5; opacity: .7; }
+.tt-cursor { stroke: var(--fg); stroke-width: 2; stroke-dasharray: 3 3; }
+.tt-cursorlabel { fill: var(--fg); font: 700 11px var(--font-mono); }
+#ttSlider { width: 100%; margin: 4px 0 0; accent-color: var(--accent); }
+#ttTip { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 240px; box-shadow: 0 6px 20px rgba(0,0,0,.15); pointer-events: none; z-index: 3; }
+.tt-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.tt-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.tt-leg i { width: 16px; height: 16px; border-radius: 50%; background: var(--k); color: #fff; font: 700 9px/16px var(--font-ui); text-align: center; font-style: normal; }
+
+.tt-event { display: inline-block; margin-top: 14px; padding: 4px 12px; border-radius: 999px; font-weight: 600; border: 2px solid var(--k); color: var(--k); background: var(--panel); }
+.tt-note { margin: 6px 0 0; color: var(--muted); min-height: 1.4em; }
+.tt-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+.tt-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+.tt-panel h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tt-panel h3 .v { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--fg); }
+.tt-prompt { font-size: 15px; line-height: 1.55; min-height: 3.2em; }
+.tt-prompt ins, .pdiff ins { text-decoration: none; background: var(--ins-bg); color: var(--ins-fg); border-radius: 3px; padding: 0 2px; }
+.tt-prompt del, .pdiff del { background: var(--del-bg); color: var(--del-fg); border-radius: 3px; padding: 0 2px; }
+.tt-difflegend { display: flex; gap: 10px; margin-top: 8px; }
+.tt-difflegend ins, .tt-difflegend del { text-decoration: none; }
+.tt-models { display: flex; flex-direction: column; gap: 6px; }
+.tt-model { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); border-left: 4px solid var(--m); }
+.tt-model .avatar, .tt-lane .avatar, .tt-bubble .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--m); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.tt-model .name { font-weight: 600; }
+.tt-model .tools { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; }
+.tool-chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--soft); color: var(--fg); border: 1px solid var(--k-tool); }
+.tt-kv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); margin-top: 8px; }
+.tt-toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.tt-toggle::before { content: ""; width: 34px; height: 18px; border-radius: 999px; background: var(--line); position: relative; display: inline-block; transition: background .2s; box-shadow: inset 0 0 0 2px var(--panel); }
+.tt-toggle.on::before { background: var(--k-run); }
+.tt-toggle::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); position: absolute; margin-left: 3px; transition: transform .2s; }
+.tt-toggle { position: relative; }
+.tt-toggle.on::after { transform: translateX(16px); }
+.tt-toggle.off { color: var(--muted); }
+.tt-files { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.tt-file { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; border-top: 4px solid var(--m); }
+.tt-file .ext { font: 700 10px var(--font-mono); text-transform: uppercase; color: var(--m); }
+.tt-file .fname { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.tt-file .meta { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-file.fresh { box-shadow: 0 0 0 2px var(--k-run); }
+.tt-file.release::after { content: "★"; position: absolute; top: 4px; right: 6px; color: var(--k-tool); }
+@media (prefers-reduced-motion: no-preference) { .tt-file.fresh { animation: pop .4s ease-out; } @keyframes pop { from { transform: scale(.92); } } }
+
+.tt-debate { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; border-top: 4px solid var(--k-debate); }
+.tt-debate h3 { margin: 0; font-size: 15px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.tt-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.tt-lane { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: var(--soft); border-left: 4px solid var(--m); min-width: 0; }
+.tt-lane .agent { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.tt-thread { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.tt-bubble { max-width: 70%; border: 1px solid var(--line); border-left: 4px solid var(--m); border-radius: 10px; padding: 8px 10px; background: var(--bg); }
+.tt-bubble.from-planner { align-self: flex-start; }
+.tt-bubble.from-critic { align-self: center; }
+.tt-bubble.from-builder { align-self: flex-end; }
+@media (max-width: 700px) { .tt-bubble { max-width: 100%; } .tt-lanes { grid-template-columns: 1fr; } }
+.tt-bubble .who { display: flex; align-items: center; gap: 8px; }
+.tt-bubble .avatar { width: 22px; height: 22px; font-size: 11px; }
+.tt-bubble p { margin: 6px 0 0; }
+.tt-proposal { margin-top: 8px; padding: 8px; border-radius: 8px; background: var(--panel); border: 1px dashed var(--k-prompt); }
+.tt-proposal .pdiff { margin-top: 4px; font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) { .tt-bubble { animation: rise .35s both; } @keyframes rise { from { opacity: 0; transform: translateY(6px); } } }
+.tt-resolution { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--soft); border-left: 4px solid var(--k-run); font-weight: 600; }
+
+.tt-ledger { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.tt-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 0 10px; padding: 8px 6px; border-radius: 8px; cursor: pointer; position: relative; }
+.tt-row:hover { background: var(--panel); }
+.tt-row.current { background: var(--panel); outline: 1px solid var(--k); }
+.tt-row .dot { position: relative; }
+.tt-row .dot::before { content: ""; position: absolute; left: 10px; top: 24px; bottom: -14px; width: 2px; background: var(--line); }
+.tt-row:last-child .dot::before { display: none; }
+.tt-row .dot i { position: relative; width: 22px; height: 22px; border-radius: 50%; background: var(--k); color: #fff; font: 700 10px/22px var(--font-ui); text-align: center; display: block; font-style: normal; }
+.tt-row .head { display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: var(--muted); }
+.tt-row .head .when { font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.tt-row .title { font-size: 13px; }
+.tt-row .pdiff { font-size: 12.5px; margin-top: 3px; line-height: 1.5; }
+.tt-row .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.mini { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--m, var(--line)); color: var(--fg); background: var(--panel); }
+.mini.file { border-style: dashed; font-family: var(--font-mono); }
+
+/* timestamps on the playground's own git log */
+.log li button { grid-template-columns: auto minmax(0, 1fr); }
+.log .when { grid-column: 1 / -1; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* @tt-css-end */
 </style>
 
 <header class="topbar">
   <span class="brand">multi-ai</span>
   <span class="demo-pill">Playground · scripted replies</span>
+  <nav class="viewnav" aria-label="View">
+    <button id="navPlay" aria-pressed="true">Playground</button>
+    <button id="navTime" aria-pressed="false">Time travel</button>
+  </nav>
   <div class="right">
     <span class="muted small">Workspace <strong>default</strong></span>
     <span class="conn">Claude: demo</span>
   </div>
 </header>
 
-<div class="shell">
+<div class="shell" id="viewPlay">
   <main>
     <p class="note">This is the multi-ai interface running in demo mode. Replies are pre-written so you can see the flow without an API key: variants stream side by side, artifacts open live, and each finished variant becomes a git commit. After a run, <strong>↻ Reprompt</strong> reruns a variant in a fresh context so you can compare takes. The real app (<code>npm start</code>) sends the same requests to Claude.</p>
 
@@ -150,6 +282,59 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
     <div class="tree" id="tree">workspaces/default/
 └── README.md</div>
     <p class="small muted">Click a commit to see the repo as it was at that point.</p>
+  </aside>
+</div>
+
+<div class="tt" id="viewTime" hidden>
+  <main>
+    <p class="note">One scripted hour in a workspace, replayed from its master ledger. Drag the slider or press play. The ledger stores only four things per event: <strong>timestamp</strong> (human, ISO and UNIX), <strong>prompt</strong>, <strong>models</strong>, <strong>output files</strong>. Everything else lives in the variant repos.</p>
+    <div class="tt-clock">
+      <span class="big" id="ttHuman"></span>
+      <span class="unix mono">unix <b id="ttUnix"></b></span>
+      <span class="unix mono small" id="ttIso"></span>
+    </div>
+    <div class="tt-controls">
+      <button class="btn" id="ttPrev" title="Previous event (←)">◀ Prev</button>
+      <button class="btn primary" id="ttPlay">▶ Play</button>
+      <button class="btn" id="ttNext" title="Next event (→)">Next ▶</button>
+      <label class="small muted">Speed <select id="ttSpeed"><option value="30">30×</option><option value="120" selected>120×</option><option value="600">600×</option></select></label>
+    </div>
+    <div class="tt-track">
+      <svg id="ttSvg" role="img" aria-label="Workspace timeline"></svg>
+      <div id="ttTip" hidden></div>
+      <input type="range" id="ttSlider" aria-label="Time">
+      <div class="tt-legend" id="ttLegend"></div>
+    </div>
+    <span class="tt-event" id="ttEventTitle"></span>
+    <p class="tt-note small" id="ttEventNote"></p>
+    <div class="tt-panels">
+      <section class="tt-panel">
+        <h3>Prompt <span class="v" id="ttPromptVersion"></span></h3>
+        <div class="tt-prompt" id="ttPrompt"></div>
+        <div class="tt-difflegend small muted" id="ttPromptLegend"><ins>added</ins><del>removed</del><span>vs previous version</span></div>
+      </section>
+      <section class="tt-panel">
+        <h3>Configuration</h3>
+        <div class="tt-models" id="ttModels"></div>
+        <div class="tt-kv"><span>Web access</span><span class="tt-toggle" id="ttWeb"><span></span></span></div>
+        <div class="tt-kv"><span>MCP tools</span><span class="small" id="ttMcpCount"></span></div>
+      </section>
+      <section class="tt-panel">
+        <h3>Output files <span class="v small" id="ttFileCount"></span></h3>
+        <div class="tt-files" id="ttFiles"></div>
+      </section>
+    </div>
+    <section class="tt-debate" id="ttDebate" hidden>
+      <h3><span id="ttDebateTitle"></span><span class="small muted" id="ttDebateTopic"></span></h3>
+      <div class="tt-lanes" id="ttLanes"></div>
+      <div class="tt-thread" id="ttThread"></div>
+      <div class="tt-resolution" id="ttResolution"></div>
+    </section>
+  </main>
+  <aside class="rail">
+    <h2>Master ledger</h2>
+    <p class="small muted" style="margin:0">Newest first. Prompt rows show what changed since the previous version.</p>
+    <ol class="tt-ledger" id="ttLedger"></ol>
   </aside>
 </div>
 
@@ -531,7 +716,8 @@ const modelSlug = (m) => m.toLowerCase().replace("claude ", "claude-").replace(/
 const bytes = (s) => new Blob([s]).size;
 const artifactHtml = (a) => a.html ?? GAMES[a.game] ?? "<p>missing game</p>";
 let current = EXAMPLES[0];
-let commits = [{ sha: sha(), subject: "Initialize workspace", files: ["README.md"] }];
+let commits = [{ sha: sha(), subject: "Initialize workspace", files: ["README.md"], at: Math.floor(Date.now() / 1000) }];
+const whenLabel = (unix) => `${new Date(unix * 1000).toISOString().replace("T", " ").slice(0, 19)} UTC · ${unix}`;
 let cards = [];
 let runCount = 0;
 let runId = null;
@@ -620,10 +806,11 @@ function renderLog(selected = commits.length - 1) {
     const li = document.createElement("li");
     const b = document.createElement("button");
     b.setAttribute("aria-pressed", String(i === selected));
-    b.innerHTML = `<span class="sha"></span><span class="subj"></span>`;
+    b.innerHTML = `<span class="sha"></span><span class="subj"></span><span class="when"></span>`;
     b.querySelector(".sha").textContent = c.sha;
     b.querySelector(".subj").textContent = c.subject;
-    b.title = c.subject;
+    b.querySelector(".when").textContent = whenLabel(c.at);
+    b.title = `${c.subject}\n${new Date(c.at * 1000).toUTCString()} · unix ${c.at}`;
     b.onclick = () => { renderLog(i); $("#treeTitle").textContent = i === commits.length - 1 ? "Files" : `Files at ${c.sha}`; };
     li.appendChild(b);
     ul.appendChild(li);
@@ -633,7 +820,7 @@ function renderLog(selected = commits.length - 1) {
 }
 
 function commit(subject, files) {
-  commits.push({ sha: sha(), subject, files });
+  commits.push({ sha: sha(), subject, files, at: Math.floor(Date.now() / 1000) });
   renderLog();
   return commits[commits.length - 1].sha;
 }
@@ -850,4 +1037,349 @@ $("#repromptAll").onclick = repromptAll;
 renderExamples();
 selectExample(EXAMPLES[0]);
 renderLog();
+
+// ---------- view switch ----------
+function showView(which) {
+  $("#viewPlay").hidden = which !== "play";
+  $("#viewTime").hidden = which !== "time";
+  $("#navPlay").setAttribute("aria-pressed", String(which === "play"));
+  $("#navTime").setAttribute("aria-pressed", String(which === "time"));
+  if (which === "time" && window.ttRender) window.ttRender();
+}
+$("#navPlay").onclick = () => showView("play");
+$("#navTime").onclick = () => showView("time");
+if (location.hash === "#time") showView("time");
+
+// @tt-js-begin
+// ---------- Time travel simulator ----------
+// A scripted hour in one workspace: prompts evolving, configuration and model changes, MCP
+// tools arriving, and three agents debating prompt / configuration / outcome through the
+// platform. The slider replays the master ledger (timestamp, prompt, models, output files).
+(() => {
+  const T0 = Date.UTC(2026, 9, 4, 9, 0, 0) / 1000; // 2026-10-04 09:00:00 UTC
+  const at = (m, s = 0) => T0 + m * 60 + s;
+  const KINDS = {
+    prompt: { label: "Prompt", glyph: "P" },
+    run: { label: "Run / outputs", glyph: "R" },
+    config: { label: "Configuration", glyph: "C" },
+    model: { label: "Model change", glyph: "M" },
+    tool: { label: "MCP tool", glyph: "T" },
+    debate: { label: "Agent debate", glyph: "D" },
+  };
+  const AGENTS = {
+    planner: { name: "Planner", model: "Claude Opus 5.5", initial: "P" },
+    critic: { name: "Critic", model: "Claude Sonnet 5.5", initial: "C" },
+    builder: { name: "Builder", model: "Claude Haiku 4.5", initial: "B" },
+  };
+  const P1 = "tell me a joke";
+  const P2 = "build me a fun game in less than 2kb";
+  const P3 = "build me a fun puzzle game in less than 3kb with undo and a par score";
+  const P4 = "build me a fun action game in less than 4kb with undo and a par score. It must pass a 10 second Playwright smoke test.";
+  const P5 = "build me a fun action game in less than 4kb with particles and power-ups. It must pass a 10 second Playwright smoke test and keep the best score in localStorage.";
+
+  const EVENTS = [
+    { t: at(0), kind: "run", title: "Workspace created", outputs: [{ name: "README.md", bytes: 412, by: "orchestrator" }] },
+    { t: at(2, 10), kind: "prompt", title: "Prompt v1", prompt: P1, models: ["Claude Haiku 4.5"] },
+    { t: at(2, 24), kind: "run", title: "Run v1 finished", outputs: [{ name: "v1/response.md", bytes: 61, by: "Claude Haiku 4.5" }] },
+    { t: at(5, 2), kind: "prompt", title: "Prompt v2", prompt: P2, models: ["Claude Opus 5.5", "Claude Haiku 4.5"] },
+    { t: at(5, 48), kind: "run", title: "Run v2 finished", outputs: [{ name: "v2/opus/orbit.html", bytes: 1408, by: "Claude Opus 5.5" }, { name: "v2/haiku/dodge.html", bytes: 1112, by: "Claude Haiku 4.5" }] },
+    { t: at(11, 5), kind: "config", title: "Web access on for Opus", web: true, note: "Opus may search the web (Web Audio and canvas quirks)." },
+    { t: at(14, 0), kind: "debate", title: "Debate 1 · what should the prompt be?", topic: "prompt",
+      turns: [
+        { who: "planner", text: "2 KB keeps the games trivial. Propose a puzzle at 3 KB so there is room for undo and a par score.", proposal: { prompt: P3 } },
+        { who: "critic", text: "Changing budget and genre at once hides what caused the difference. Keep 2 KB, change only the genre." },
+        { who: "builder", text: "At 2 KB I can ship a puzzle, but not undo. Undo plus par is about 600 bytes." },
+        { who: "critic", text: "Fair. 3 KB then, but the ledger must record the budget change as its own prompt version so it stays traceable." },
+        { who: "planner", text: "Agreed. Prompt v3 at 3 KB, undo and par required." },
+      ],
+      resolution: { prompt: P3, models: ["Claude Opus 5.5", "Claude Haiku 4.5"] }, outputs: [{ name: "debates/round-1.md", bytes: 1980, by: "orchestrator" }] },
+    { t: at(14, 20), kind: "prompt", title: "Prompt v3 (from debate 1)", prompt: P3 },
+    { t: at(16, 30), kind: "run", title: "Run v3 finished", outputs: [{ name: "v3/opus/lights.html", bytes: 2126, by: "Claude Opus 5.5" }, { name: "v3/haiku/memory.html", bytes: 1336, by: "Claude Haiku 4.5" }] },
+    { t: at(25, 0), kind: "tool", title: "MCP tools added: filesystem, playwright", mcp: ["filesystem", "playwright"], note: "Variants can write artifacts directly and run a headless browser against them." },
+    { t: at(28, 0), kind: "debate", title: "Debate 2 · which configuration?", topic: "configuration",
+      turns: [
+        { who: "critic", text: "Now that Playwright is available, every variant should have to pass a smoke test before its output counts." },
+        { who: "planner", text: "A browser run per variant roughly doubles cost on Haiku runs that are cheap to begin with." },
+        { who: "builder", text: "I can run the test once per take; it is about 3 seconds. Cost is dominated by the model, not the test." },
+        { who: "critic", text: "Then give the playwright tool to the Opus variant only, and let Haiku stay cheap as the control." },
+        { who: "planner", text: "Accepted: Opus gets filesystem + playwright, Haiku gets filesystem only. The prompt states the test so both know the bar.", proposal: { prompt: P4 } },
+      ],
+      resolution: { prompt: P4, mcpByModel: { "Claude Opus 5.5": ["filesystem", "playwright"], "Claude Haiku 4.5": ["filesystem"] } }, outputs: [{ name: "debates/round-2.md", bytes: 2210, by: "orchestrator" }] },
+    { t: at(31, 0), kind: "prompt", title: "Prompt v4 (from debate 2)", prompt: P4 },
+    { t: at(33, 40), kind: "run", title: "Run v4 finished", outputs: [{ name: "v4/opus/asteroids.html", bytes: 3746, by: "Claude Opus 5.5" }, { name: "v4/opus/test-report.json", bytes: 530, by: "playwright" }, { name: "v4/haiku/runner.html", bytes: 1330, by: "Claude Haiku 4.5" }] },
+    { t: at(40, 0), kind: "model", title: "Model switch: Opus 5.5 → Fable 5.1", models: ["Claude Fable 5.1", "Claude Haiku 4.5"], note: "Same prompt and tools, stronger model on the action variant." },
+    { t: at(44, 15), kind: "run", title: "Reprompt (fresh context) finished", outputs: [{ name: "v4/fable/breakout.html", bytes: 3717, by: "Claude Fable 5.1" }, { name: "v4/fable/test-report.json", bytes: 544, by: "playwright" }] },
+    { t: at(50, 0), kind: "debate", title: "Debate 3 · which outcome ships?", topic: "outcome",
+      turns: [
+        { who: "critic", text: "Two candidates passed the smoke test: asteroids.html (3,746 B) and breakout.html (3,717 B). Both under 4 KB." },
+        { who: "builder", text: "breakout has power-ups and particle effects; asteroids has more systems but no progression." },
+        { who: "planner", text: "Pick breakout as the release candidate. Keep asteroids in the ledger as the Opus take so the comparison stays reproducible." },
+        { who: "critic", text: "Agreed, with one more prompt revision: name the features we are actually judging, and persist the best score." , proposal: { prompt: P5 } },
+      ],
+      resolution: { prompt: P5, release: "v4/fable/breakout.html" }, outputs: [{ name: "debates/round-3.md", bytes: 1740, by: "orchestrator" }, { name: "RELEASE.md", bytes: 220, by: "orchestrator" }] },
+    { t: at(52, 0), kind: "config", title: "Web access off (judging policy)", web: false, note: "No network while outputs are being judged." },
+    { t: at(55, 0), kind: "prompt", title: "Prompt v5 (from debate 3)", prompt: P5 },
+    { t: at(58, 30), kind: "run", title: "Run v5 finished", outputs: [{ name: "v5/fable/breakout.html", bytes: 3902, by: "Claude Fable 5.1" }, { name: "v5/fable/test-report.json", bytes: 548, by: "playwright" }, { name: "v5/haiku/shooter.html", bytes: 2029, by: "Claude Haiku 4.5" }] },
+  ];
+  const T_END = EVENTS[EVENTS.length - 1].t + 60;
+
+  // ----- state fold -----
+  function stateAt(T) {
+    const s = { prompt: "", prevPrompt: "", version: 0, models: ["—"], web: false, mcp: {}, outputs: [], debates: [], events: [], release: null };
+    for (const e of EVENTS) {
+      if (e.t > T) break;
+      s.events.push(e);
+      if (e.prompt) { s.prevPrompt = s.prompt; s.prompt = e.prompt; s.version++; }
+      if (e.models) s.models = e.models;
+      if (e.web !== undefined) s.web = e.web;
+      if (e.mcp) for (const m of s.models) s.mcp[m] = [...new Set([...(s.mcp[m] || []), ...e.mcp])];
+      if (e.resolution?.mcpByModel) s.mcp = { ...e.resolution.mcpByModel };
+      if (e.resolution?.release) s.release = e.resolution.release;
+      if (e.kind === "model" && e.models) { // tools follow the slot: the new model inherits the replaced model's tools
+        const prev = Object.keys(s.mcp).find((m) => !e.models.includes(m));
+        if (prev && !s.mcp[e.models[0]]) { s.mcp[e.models[0]] = s.mcp[prev]; delete s.mcp[prev]; }
+      }
+      if (e.outputs) s.outputs.push(...e.outputs.map((o) => ({ ...o, t: e.t })));
+      if (e.kind === "debate") s.debates.push(e);
+    }
+    return s;
+  }
+
+  // ----- helpers -----
+  const $ = (q) => document.querySelector(q);
+  const pad = (n) => String(n).padStart(2, "0");
+  const hhmmss = (t) => { const d = new Date(t * 1000); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`; };
+  const human = (t) => new Date(t * 1000).toUTCString().replace(/ GMT$/, " UTC");
+  const kb = (b) => b >= 1024 ? `${(b / 1024).toFixed(1)} KB` : `${b} B`;
+  const modelClass = (m) => m.includes("Opus") ? "m-opus" : m.includes("Sonnet") ? "m-sonnet" : m.includes("Fable") ? "m-fable" : m.includes("Haiku") ? "m-haiku" : "m-other";
+
+  // Word-level diff (LCS) so a prompt revision reads as what was added and removed.
+  function wordDiff(a, b) {
+    const A = a ? a.split(/\s+/) : [], B = b ? b.split(/\s+/) : [];
+    const n = A.length, m = B.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const out = []; let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { out.push(["=", A[i]]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) { out.push(["-", A[i]]); i++; }
+      else { out.push(["+", B[j]]); j++; }
+    }
+    while (i < n) out.push(["-", A[i++]]);
+    while (j < m) out.push(["+", B[j++]]);
+    return out;
+  }
+  function diffHtml(a, b) {
+    const frag = document.createDocumentFragment();
+    for (const [op, w] of wordDiff(a, b)) {
+      const el = document.createElement(op === "=" ? "span" : op === "+" ? "ins" : "del");
+      el.textContent = w + " ";
+      frag.appendChild(el);
+    }
+    return frag;
+  }
+
+  // ----- timeline (SVG) -----
+  const svg = $("#ttSvg");
+  const slider = $("#ttSlider");
+  slider.min = T0; slider.max = T_END; slider.step = 1; slider.value = EVENTS[1].t;
+  let T = Number(slider.value), playing = false, raf = null, lastTick = 0;
+
+  function layoutTimeline() {
+    const W = svg.clientWidth || 800, H = 92, padX = 18;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const X = (t) => padX + (t - T0) / (T_END - T0) * (W - padX * 2);
+    let g = `<line class="tt-axis" x1="${padX}" y1="46" x2="${W - padX}" y2="46"/>`;
+    for (let m = 0; m <= 60; m += 10) {
+      const x = X(T0 + m * 60);
+      g += `<line class="tt-tick" x1="${x}" y1="46" x2="${x}" y2="54"/><text class="tt-ticklabel" x="${x}" y="70" text-anchor="middle">${hhmmss(T0 + m * 60).slice(0, 5)}</text>`;
+    }
+    // Rows alternate so close events do not overlap.
+    EVENTS.forEach((e, i) => {
+      const x = X(e.t), y = i % 2 ? 24 : 46 - 0, up = i % 2;
+      const past = e.t <= T;
+      g += `<g class="tt-node k-${e.kind} ${past ? "past" : "future"}" data-i="${i}" tabindex="0" role="button" aria-label="${e.title} at ${hhmmss(e.t)}">
+        ${up ? `<line class="tt-stem" x1="${x}" y1="${y + 9}" x2="${x}" y2="46"/>` : ""}
+        <circle cx="${x}" cy="${y}" r="9"/><text x="${x}" y="${y + 3.5}" text-anchor="middle">${KINDS[e.kind].glyph}</text></g>`;
+    });
+    const cx = X(T);
+    g += `<line class="tt-cursor" x1="${cx}" y1="6" x2="${cx}" y2="60"/><text class="tt-cursorlabel" x="${cx}" y="88" text-anchor="middle">${hhmmss(T)}</text>`;
+    svg.innerHTML = g;
+    svg.querySelectorAll(".tt-node").forEach((n) => {
+      const go = () => { setT(EVENTS[+n.dataset.i].t); };
+      n.addEventListener("click", go);
+      n.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
+      n.addEventListener("mouseenter", () => showTip(EVENTS[+n.dataset.i], n));
+      n.addEventListener("mouseleave", hideTip);
+    });
+  }
+  function showTip(e, node) {
+    const tip = $("#ttTip"); const r = node.getBoundingClientRect(), host = svg.getBoundingClientRect();
+    tip.innerHTML = `<b></b><br><span class="small muted"></span>`;
+    tip.querySelector("b").textContent = e.title;
+    tip.querySelector("span").textContent = `${human(e.t)} · ${e.t}`;
+    tip.style.left = Math.max(0, Math.min(r.left - host.left - 80, host.width - 240)) + "px";
+    tip.style.top = (r.bottom - host.top + 6) + "px";
+    tip.hidden = false;
+  }
+  function hideTip() { $("#ttTip").hidden = true; }
+
+  // ----- panels -----
+  function render() {
+    const s = stateAt(T);
+    const cur = s.events[s.events.length - 1];
+    $("#ttHuman").textContent = human(T);
+    $("#ttUnix").textContent = T;
+    $("#ttIso").textContent = new Date(T * 1000).toISOString();
+    $("#ttEventTitle").textContent = cur ? cur.title : "Before the workspace existed";
+    $("#ttEventTitle").className = "tt-event k-" + (cur ? cur.kind : "run");
+    $("#ttEventNote").textContent = cur?.note || (cur?.kind === "debate" ? "Three agents negotiate through the platform; the resolution is committed like any other output." : "");
+
+    // Prompt
+    const pv = $("#ttPromptVersion"); pv.textContent = s.version ? `v${s.version}` : "none yet";
+    const pb = $("#ttPrompt"); pb.innerHTML = "";
+    if (s.version) pb.appendChild(diffHtml(s.prevPrompt, s.prompt)); else pb.textContent = "No prompt sent yet.";
+    $("#ttPromptLegend").hidden = !s.prevPrompt;
+
+    // Configuration
+    const ms = $("#ttModels"); ms.innerHTML = "";
+    for (const m of s.models) {
+      const chip = document.createElement("div"); chip.className = "tt-model " + modelClass(m);
+      chip.innerHTML = `<span class="avatar"></span><span class="name"></span><span class="tools"></span>`;
+      chip.querySelector(".avatar").textContent = m === "—" ? "·" : m.replace("Claude ", "")[0];
+      chip.querySelector(".name").textContent = m;
+      const tools = s.mcp[m] || [];
+      chip.querySelector(".tools").innerHTML = tools.map(() => `<span class="tool-chip"></span>`).join("");
+      chip.querySelectorAll(".tool-chip").forEach((el, i) => (el.textContent = "⌁ " + tools[i]));
+      ms.appendChild(chip);
+    }
+    const web = $("#ttWeb"); web.className = "tt-toggle " + (s.web ? "on" : "off"); web.querySelector("span").textContent = s.web ? "on" : "off";
+    const allTools = [...new Set(Object.values(s.mcp).flat())];
+    $("#ttMcpCount").textContent = allTools.length ? allTools.join(", ") : "none";
+
+    // Outputs
+    const fo = $("#ttFiles"); fo.innerHTML = "";
+    $("#ttFileCount").textContent = `${s.outputs.length} file${s.outputs.length === 1 ? "" : "s"} · ${kb(s.outputs.reduce((a, o) => a + o.bytes, 0))}`;
+    for (const o of s.outputs) {
+      const tile = document.createElement("div");
+      const ext = o.name.split(".").pop();
+      tile.className = "tt-file " + modelClass(o.by) + (cur && o.t === cur.t ? " fresh" : "") + (s.release === o.name ? " release" : "");
+      tile.innerHTML = `<span class="ext"></span><span class="fname"></span><span class="meta small"></span>`;
+      tile.querySelector(".ext").textContent = ext;
+      tile.querySelector(".fname").textContent = o.name;
+      tile.querySelector(".meta").textContent = `${kb(o.bytes)} · ${o.by}${s.release === o.name ? " · release" : ""}`;
+      tile.title = `${o.name} · ${human(o.t)} · ${o.t}`;
+      fo.appendChild(tile);
+    }
+
+    // Debate
+    const dp = $("#ttDebate");
+    const debate = cur?.kind === "debate" ? cur : null;
+    dp.hidden = !debate;
+    if (debate) renderDebate(debate, s);
+
+    // Ledger (master repo: timestamp, prompt, models, outputs only)
+    const lg = $("#ttLedger"); lg.innerHTML = "";
+    let prevPrompt = "";
+    [...s.events].reverse().forEach((e, idx) => {
+      const li = document.createElement("li");
+      li.className = "tt-row k-" + e.kind + (idx === 0 ? " current" : "");
+      li.innerHTML = `<span class="dot"><i></i></span><div class="body"><div class="head"><span class="when"></span><span class="unix mono"></span></div><div class="title"></div><div class="pdiff"></div><div class="chips"></div></div>`;
+      li.querySelector(".when").textContent = hhmmss(e.t);
+      li.querySelector(".unix").textContent = e.t;
+      li.querySelector(".dot i").textContent = KINDS[e.kind].glyph;
+      li.querySelector(".title").textContent = e.title;
+      li.onclick = () => setT(e.t);
+      lg.appendChild(li);
+    });
+    // Prompt diffs must read forward in time, so compute them in order and fill in.
+    const rows = [...lg.children].reverse();
+    s.events.forEach((e, i) => {
+      const row = rows[i];
+      if (e.prompt) { row.querySelector(".pdiff").appendChild(diffHtml(prevPrompt, e.prompt)); prevPrompt = e.prompt; }
+      else row.querySelector(".pdiff").remove();
+      const chips = row.querySelector(".chips");
+      const st = stateAt(e.t);
+      if (e.prompt || e.kind === "model") for (const m of st.models) { const c = document.createElement("span"); c.className = "mini " + modelClass(m); c.textContent = m.replace("Claude ", ""); chips.appendChild(c); }
+      for (const o of e.outputs || []) { const c = document.createElement("span"); c.className = "mini file"; c.textContent = o.name.split("/").pop(); chips.appendChild(c); }
+      if (!chips.children.length) chips.remove();
+    });
+    layoutTimeline();
+  }
+
+  function renderDebate(d, s) {
+    const dp = $("#ttDebate");
+    $("#ttDebateTitle").textContent = d.title;
+    $("#ttDebateTopic").textContent = `topic: ${d.topic}`;
+    const lanes = $("#ttLanes"); lanes.innerHTML = "";
+    for (const [key, a] of Object.entries(AGENTS)) {
+      const lane = document.createElement("div"); lane.className = "tt-lane " + modelClass(a.model);
+      lane.innerHTML = `<div class="agent"><span class="avatar"></span><div><b></b><div class="small muted"></div></div></div>`;
+      lane.querySelector(".avatar").textContent = a.initial;
+      lane.querySelector("b").textContent = a.name;
+      lane.querySelector(".small").textContent = a.model;
+      lanes.appendChild(lane);
+    }
+    const thread = $("#ttThread"); thread.innerHTML = "";
+    d.turns.forEach((turn, i) => {
+      const a = AGENTS[turn.who];
+      const b = document.createElement("div");
+      b.className = `tt-bubble ${modelClass(a.model)} from-${turn.who}`;
+      b.style.animationDelay = `${i * 60}ms`;
+      b.innerHTML = `<div class="who"><span class="avatar"></span><b></b><span class="small muted step"></span></div><p></p>`;
+      b.querySelector(".avatar").textContent = a.initial;
+      b.querySelector("b").textContent = a.name;
+      b.querySelector(".step").textContent = `turn ${i + 1} · ${hhmmss(d.t + i * 7)}`;
+      b.querySelector("p").textContent = turn.text;
+      if (turn.proposal?.prompt) {
+        const prop = document.createElement("div"); prop.className = "tt-proposal";
+        prop.innerHTML = `<span class="small muted">proposes prompt</span><div class="pdiff"></div>`;
+        const before = s.events.filter((e) => e.prompt && e.t < d.t).pop()?.prompt || "";
+        prop.querySelector(".pdiff").appendChild(diffHtml(before, turn.proposal.prompt));
+        b.appendChild(prop);
+      }
+      thread.appendChild(b);
+    });
+    const res = $("#ttResolution");
+    const parts = [];
+    if (d.resolution.prompt) parts.push("prompt revised");
+    if (d.resolution.mcpByModel) parts.push("tools assigned per model");
+    if (d.resolution.models) parts.push("models kept");
+    if (d.resolution.release) parts.push(`release: ${d.resolution.release}`);
+    res.textContent = `Resolution → ${parts.join(" · ")} · committed as ${d.outputs.map((o) => o.name).join(", ")}`;
+  }
+
+  // ----- control -----
+  function setT(t) { T = Math.round(Math.max(T0, Math.min(T_END, t))); slider.value = T; render(); }
+  slider.addEventListener("input", () => setT(Number(slider.value)));
+  $("#ttPrev").onclick = () => { const prev = [...EVENTS].reverse().find((e) => e.t < T); if (prev) setT(prev.t); };
+  $("#ttNext").onclick = () => { const next = EVENTS.find((e) => e.t > T); if (next) setT(next.t); };
+  function tick(now) {
+    if (!playing) return;
+    if (!lastTick) lastTick = now;
+    const dt = (now - lastTick) / 1000; lastTick = now;
+    const speed = Number($("#ttSpeed").value);
+    if (T >= T_END) { stop(); return; }
+    setT(T + dt * speed);
+    raf = requestAnimationFrame(tick);
+  }
+  function play() { playing = true; lastTick = 0; $("#ttPlay").textContent = "❚❚ Pause"; if (T >= T_END) setT(T0); raf = requestAnimationFrame(tick); }
+  function stop() { playing = false; cancelAnimationFrame(raf); $("#ttPlay").textContent = "▶ Play"; }
+  $("#ttPlay").onclick = () => (playing ? stop() : play());
+  window.addEventListener("resize", layoutTimeline);
+  document.addEventListener("keydown", (e) => {
+    if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if ($("#viewTime").hidden) return;
+    if (e.key === "ArrowLeft") $("#ttPrev").click();
+    if (e.key === "ArrowRight") $("#ttNext").click();
+  });
+  // Legend
+  const leg = $("#ttLegend");
+  for (const [k, v] of Object.entries(KINDS)) {
+    const el = document.createElement("span"); el.className = "tt-leg k-" + k;
+    el.innerHTML = `<i></i><span></span>`; el.querySelector("i").textContent = v.glyph; el.querySelector("span").textContent = v.label; leg.appendChild(el);
+  }
+  window.ttRender = render;
+  render();
+})();
+// @tt-js-end
 </script>

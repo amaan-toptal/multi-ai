@@ -47,14 +47,20 @@ export async function ensureRepo(ws) {
       "- `runs/<run-id>/prompt.md` — the exact prompt\n" +
       "- `runs/<run-id>/run.json` — which variants were selected\n" +
       "- `runs/<run-id>/variants/<variant>/` — `thinking.md`, `response.md`, `artifacts/`, `events.jsonl`, `meta.json`\n\n" +
-      "Each variant's completion is its own commit, so `git log` is a timeline of the run.\n");
+      "Each variant's completion is its own commit, so `git log` is a timeline of the run.\n\n" +
+      "## Master ledger\n\n`ledger.jsonl` is the index of this workspace: one line per event with only\n" +
+      "`unix`, `iso`, `human` timestamps, the prompt, the models chosen and the output files.\n" +
+      "Every commit message ends with a `Timestamp: <unix> (<iso>)` trailer carrying the same instant.\n");
     await git(dir, ["add", "-A"]);
     await git(dir, ["commit", "-q", "-m", "Initialize workspace"]);
     return dir;
   });
 }
 
-/** Write files (relative path -> string|Buffer) and commit them in one commit. */
+/**
+ * Write files (relative path -> string|Buffer, or {append: string} to add to the
+ * end of an existing file such as the ledger) and commit them in one commit.
+ */
 export async function commitFiles(ws, files, message) {
   const dir = await ensureRepo(ws);
   return serialized(dir, async () => {
@@ -62,7 +68,11 @@ export async function commitFiles(ws, files, message) {
       const abs = path.join(dir, rel);
       if (!abs.startsWith(dir + path.sep)) throw new Error(`refusing to write outside repo: ${rel}`);
       await fs.mkdir(path.dirname(abs), { recursive: true });
-      await fs.writeFile(abs, content);
+      if (content && typeof content === "object" && !Buffer.isBuffer(content) && "append" in content) {
+        await fs.appendFile(abs, content.append);
+      } else {
+        await fs.writeFile(abs, content);
+      }
     }
     await git(dir, ["add", "-A"]);
     await git(dir, ["commit", "-q", "--allow-empty", "-m", message]);
@@ -123,9 +133,18 @@ export async function loadRun(ws, runId, rev) {
 
 export async function workspaceLog(ws, limit = 100) {
   const dir = await ensureRepo(ws);
-  const { stdout } = await git(dir, ["log", `-n${limit}`, "--format=%H%x09%cI%x09%s"]);
+  const { stdout } = await git(dir, ["log", `-n${limit}`, "--format=%H%x09%ct%x09%cI%x09%s"]);
   return stdout.trim().split("\n").filter(Boolean).map((l) => {
-    const [sha, date, subject] = l.split("\t");
-    return { sha, date, subject };
+    const [sha, unix, date, subject] = l.split("\t");
+    return { sha, unix: Number(unix), date, subject };
   });
+}
+
+/** The master ledger: timestamps, prompts, models and output files only. */
+export async function readLedger(ws) {
+  const dir = await ensureRepo(ws);
+  try {
+    const text = await fs.readFile(path.join(dir, "ledger.jsonl"), "utf8");
+    return text.split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  } catch { return []; }
 }

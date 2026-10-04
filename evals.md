@@ -148,3 +148,48 @@
   output they can still drift; E-08 should check this.
 - **L-13 Games in the iframe need focus** for keyboard input; the viewer focuses the frame on open, but a click inside may
   still be needed in some browsers.
+
+---
+
+## 2026-10-04 — session 1, part 4 (prompt 0004) — model: Fable 5.1
+
+### Decisions taken without asking
+- **D-25 Three timestamp forms on every record** (unix seconds, ISO 8601, RFC 1123 human, all UTC) rather than two, so logs
+  are greppable by unix, sortable by ISO and readable by people without conversion. UTC everywhere; local time is a
+  display concern.
+- **D-26 `ledger.jsonl` as the master index** inside the workspace repo (not a separate repo yet). One append-only line per
+  event, limited to the four fields the owner listed plus ids to join on. Appending is done inside the same commit as the
+  run files, so the ledger and the tree never disagree.
+- **D-27 Time travel is a separate view** ("Playground" / "Time travel" switch in the top bar, `#time` deep link) rather
+  than mixed into the run grid, so the playground stays uncluttered.
+- **D-28 Event colours come from the dataviz skill's validated categorical palette** in fixed slot order (prompt blue,
+  config orange, model aqua, tool yellow, debate magenta, run green), always paired with a glyph letter and a legend so
+  identity is never colour-alone. Model identity uses the same palette on avatars, file tiles and ledger chips.
+- **D-29 The scripted hour** uses the owner's X/Y prompts (joke → game < 2 KB → puzzle < 3 KB → action < 4 KB) and adds
+  the events asked for: web access on, MCP tools (filesystem, playwright) added, a model switch Opus 5.5 → Fable 5.1,
+  web access off, and three debates (prompt / configuration / outcome). Outputs reuse the real games with their measured
+  byte sizes.
+- **D-30 Debate agents are Planner (Opus 5.5), Critic (Sonnet 5.5), Builder (Haiku 4.5)**, on purpose on different models,
+  and each debate ends in a resolution that is itself committed. Turn timestamps are spaced 7 s apart for display.
+
+### Evaluations performed
+- **E-09 Real app with a fake key:** `ledger.jsonl` gets a `prompt` line and a `variant` line with unix/iso/human; both
+  commits carry the `Timestamp:` trailer; `/api/workspaces/default/log` returns `unix` per commit. Tests pass.
+- **E-10 Time travel view in headless Chromium:** view switch works (Playground is `display: none` when hidden); 19 ledger
+  rows at the end; 18 output files · 28.3 KB; MCP tools and web-off state correct at the end; release star on
+  `breakout.html`; debate panel shows all 5 bubbles; play advances ~142 simulated seconds in 1.2 s at 120×; prompt diff
+  marks 7 inserted words at v3; 400 px dark mode has no horizontal scroll; zero page errors.
+
+### Bugs found (fixed)
+- **B-09** The Playground stayed visible underneath the Time travel view: `.shell { display: grid }` outranked the
+  `hidden` attribute in the local file (the artifact wrapper would have hidden it). Added `[hidden] { display: none
+  !important }` to the page itself.
+- **B-10** Debate bubbles staggered in over ~0.7 s, so a quick screenshot or thumbnail missed most of them. Delay cut to
+  60 ms per turn.
+
+### Loopholes / risks
+- **L-14 The ledger is append-only by convention,** not by tooling. Same gap as L-07; the CI verifier should cover
+  `ledger.jsonl` in workspace repos too.
+- **L-15 The time-travel hour is scripted,** including the debates. The real app records timestamps and a ledger today
+  but has no debate runs and no replay UI yet (spec v0.1.2 lists both).
+- **L-16 Prompt diffs are word-level LCS,** good for short prompts; long prompts will need a line-aware diff.
