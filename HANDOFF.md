@@ -205,3 +205,29 @@ repo window (yellow light) and bring it back from the dock.
 1. Owner reviews; then backend on `poc/variant-windows` (provider adapters, harness.yaml + git per experiment, real zip and
    bundle export, restore from bundle).
 2. Unchanged: agent tabs, graders, pass@k / pass^k; CI append-only verifier; block force pushes (owner TODO).
+
+---
+
+## Session 1, part 8 — 2026-10-04 — time travel across tabs and windows, reset, movable windows (model: Opus 5.5)
+
+**Prompt:** [0013](prompts/0013-2026-10-04-time-travel-reset-movable-windows.md)
+
+### What changed
+- Mockup (`docs/mockup/index.html`, same link https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx):
+  - prompt bar above the tab list;
+  - repo window and any number of file/artifact windows move anywhere on the screen (all widths), resize, maximize,
+    minimize to the dock, close;
+  - time travel bar (slider, ‹ ›, arrow keys, or click a commit): tabs, threads, settings, prompt, Files view and every open
+    window show the state right after that commit; banner with Restore / Branch / Back to latest;
+  - Restore stages the earlier state; Commit without running or Send records it as a ↶ commit; Reset undoes staged changes
+    and records a ⟲ commit.
+- spec v0.5, evals D-54…D-61, E-15, L-25…L-26.
+
+### How to verify
+Artifact → drag the repo window by its title bar → Files & artifacts → "Open in window" on two artifacts → drag the time
+travel slider left: tab 04 disappears, earlier runs only, artifact windows say "doesn't exist yet" → Restore this state →
+Changes shows the staged diff → Reset → a ⟲ commit appears and tab 04 is back.
+
+### Next steps
+Unchanged: owner review, then the backend on `poc/variant-windows` (provider adapters, git per experiment read with
+`git show <sha>:path`, real zip/bundle export and restore).

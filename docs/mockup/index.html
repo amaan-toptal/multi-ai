@@ -3,8 +3,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <style>
-/* Layout: a macOS remote desktop holding one browser whose tab strip is the list of variants, plus a floating,
-   resizable "Experiment repo" window (changes as diffs, files with inline artifact previews, export/restore). */
+/* Layout: a macOS remote desktop. One browser: prompt bar on top, variant tabs below it, panes side by side.
+   Floating windows (the experiment repo and any number of file/artifact viewers) move anywhere on the screen
+   and follow a time-travel cursor over the repo's commits. */
 :root{
   --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -19,7 +20,8 @@
   --ok:#137a39; --ok-soft:#d6f2df; --ok-ring:#2aa75c;
   --stop:#b93a31; --stop-soft:#fde0dc; --stop-ring:#de5246;
   --idle:#7d8790;
-  --k-prompt:#2a78d6; --k-run:#008300; --k-config:#eb6834; --k-mcp:#1baf7a; --k-tool:#c98500; --k-init:#7d8790;
+  --k-prompt:#2a78d6; --k-run:#008300; --k-config:#eb6834; --k-mcp:#1baf7a; --k-tool:#c98500; --k-init:#7d8790; --k-restore:#c2457d;
+  --tt-soft:#fbe4ee;
   --add-bg:#dcf3d6; --add-fg:#0b4d12; --add-mark:#a8e19c; --del-bg:#f8dcd8; --del-fg:#7a1f17; --del-mark:#efaaa2;
   --shadow:0 12px 32px rgba(15,25,35,.20),0 1px 3px rgba(15,25,35,.14);
   --scrim:rgba(12,18,24,.45);
@@ -37,7 +39,8 @@
     --ok:#56d68b; --ok-soft:#113321; --ok-ring:#2fb164;
     --stop:#ff8578; --stop-soft:#401713; --stop-ring:#e5584b;
     --idle:#8d969e;
-    --k-prompt:#3987e5; --k-run:#2fb164; --k-config:#e06a38; --k-mcp:#199e70; --k-tool:#d39a1a; --k-init:#8d969e;
+    --k-prompt:#3987e5; --k-run:#2fb164; --k-config:#e06a38; --k-mcp:#199e70; --k-tool:#d39a1a; --k-init:#8d969e; --k-restore:#e06c9f;
+    --tt-soft:#3c1828;
     --add-bg:#16361b; --add-fg:#c9f2c4; --add-mark:#2a6a31; --del-bg:#45201c; --del-fg:#f6c9c4; --del-mark:#7a332c;
     --shadow:0 12px 32px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);
     --scrim:rgba(0,0,0,.6);
@@ -55,7 +58,8 @@
   --ok:#56d68b; --ok-soft:#113321; --ok-ring:#2fb164;
   --stop:#ff8578; --stop-soft:#401713; --stop-ring:#e5584b;
   --idle:#8d969e;
-  --k-prompt:#3987e5; --k-run:#2fb164; --k-config:#e06a38; --k-mcp:#199e70; --k-tool:#d39a1a; --k-init:#8d969e;
+  --k-prompt:#3987e5; --k-run:#2fb164; --k-config:#e06a38; --k-mcp:#199e70; --k-tool:#d39a1a; --k-init:#8d969e; --k-restore:#e06c9f;
+  --tt-soft:#3c1828;
   --add-bg:#16361b; --add-fg:#c9f2c4; --add-mark:#2a6a31; --del-bg:#45201c; --del-fg:#f6c9c4; --del-mark:#7a332c;
   --shadow:0 12px 32px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);
   --scrim:rgba(0,0,0,.6);
@@ -69,7 +73,7 @@ body{margin:0;background:var(--wall-2);color:var(--fg);font-family:var(--font-ui
 button,input,select,textarea{font:inherit;color:inherit}
 form{margin:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.app{position:relative;height:100%;min-height:640px;display:flex;flex-direction:column}
+.app{position:relative;height:100%;min-height:640px;display:flex;flex-direction:column;overflow:hidden}
 
 /* Menu bar */
 .menubar{position:relative;display:flex;align-items:center;gap:14px;min-height:30px;padding:3px 16px;background:var(--bar-bg);color:var(--bar-fg);border-bottom:1px solid var(--bar-line);backdrop-filter:blur(14px);font-size:12.5px;white-space:nowrap}
@@ -90,20 +94,29 @@ form{margin:0}
   radial-gradient(120% 90% at 85% 10%,var(--wall-3) 0%,transparent 55%),
   linear-gradient(160deg,var(--wall-1) 0%,var(--wall-2) 100%)}
 .browser{position:absolute;inset:12px 16px 14px;display:flex;flex-direction:column;background:var(--chrome);border-radius:var(--r-win);overflow:hidden;box-shadow:var(--shadow),0 0 0 1px var(--chrome-line)}
-.tabbar{display:flex;align-items:flex-end;gap:6px;min-height:42px;padding:0 10px;background:var(--chrome-2)}
+.topbar{display:flex;align-items:flex-end;gap:12px;padding:8px 10px;background:var(--chrome-2)}
 .lights{display:flex;gap:7px;align-self:center;flex:none}
 .light{position:relative;width:12px;height:12px;border-radius:50%;border:0;padding:0}
 .light.close{background:#ff5f57}.light.min{background:#febc2e}.light.max{background:#28c840}
 button.light{cursor:pointer}
 button.light::after{content:attr(data-glyph);position:absolute;inset:0;display:grid;place-items:center;font:700 10px/1 var(--font-ui);color:rgba(0,0,0,.6);opacity:0}
 .lights:hover button.light::after,button.light:focus-visible::after{opacity:1}
-.tabs{display:flex;align-items:flex-end;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding-top:6px}
+.toolbar{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.toolbar .field{flex:1 1 300px;min-width:0}
+.toolbar label{display:block;font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 3px 4px}
+.toolbar textarea{width:100%;min-height:40px;max-height:150px;resize:vertical;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);line-height:1.4}
+.toolbar textarea:focus{outline:none;border-color:var(--accent)}
+.toolbar textarea[readonly]{background:var(--tt-soft);border-color:var(--k-restore)}
+.tb-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tabbar{display:flex;align-items:flex-end;gap:6px;min-height:40px;padding:0 10px;background:var(--chrome-2);border-bottom:1px solid var(--chrome-line)}
+.tabs{display:flex;align-items:flex-end;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding-top:4px}
 .vtab{position:relative;display:flex;align-items:center;flex:0 1 230px;min-width:120px;height:34px;border-radius:9px 9px 0 0;background:var(--chrome);color:var(--chrome-fg);border:1px solid var(--chrome-line);border-bottom:0}
 .vtab::before{content:"";position:absolute;left:0;right:0;top:-1px;height:3px;border-radius:9px 9px 0 0;background:var(--idle)}
 .vtab[data-status="run"]{background:var(--run-soft)} .vtab[data-status="run"]::before{background:var(--run-ring)}
 .vtab[data-status="done"]{background:var(--ok-soft)} .vtab[data-status="done"]::before{background:var(--ok-ring)}
 .vtab[data-status="stop"]{background:var(--stop-soft)} .vtab[data-status="stop"]::before{background:var(--stop-ring)}
 .vtab[aria-selected="true"]{box-shadow:inset 0 0 0 2px var(--accent);font-weight:600}
+.vtab.ghost{border-style:dashed;opacity:.8}
 .vtab-main{display:flex;align-items:center;gap:7px;flex:1;min-width:0;height:100%;padding:0 4px 0 10px;border:0;background:none;cursor:pointer;text-align:left;font-size:12px}
 .vtab-main .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--idle);flex:none}
@@ -113,19 +126,14 @@ button.light::after{content:attr(data-glyph);position:absolute;inset:0;display:g
 .fav{display:grid;place-items:center;width:18px;height:18px;border-radius:5px;font:700 9px/1 var(--font-ui);background:var(--chrome-line);color:var(--chrome-fg);flex:none}
 .vtab-x{flex:none;width:22px;height:22px;margin-right:5px;border:0;border-radius:6px;background:none;color:var(--chrome-muted);cursor:pointer;font-size:15px;line-height:1}
 .vtab-x:hover{background:var(--chrome-line);color:var(--chrome-fg)}
+.vtab-x:disabled{visibility:hidden}
 .newtab{align-self:center;flex:none;height:28px;padding:0 10px;border:1px dashed var(--chrome-line);border-radius:8px;background:transparent;color:var(--chrome-fg);cursor:pointer;font-size:12px;white-space:nowrap}
 .newtab:hover{background:var(--chrome)}
+.newtab:disabled{opacity:.5;cursor:not-allowed}
 .view{align-self:center;flex:none;display:inline-flex;border:1px solid var(--chrome-line);border-radius:7px;overflow:hidden}
 .view button{border:0;background:transparent;padding:3px 9px;cursor:pointer;font-size:12px;color:var(--chrome-muted)}
 .view button[aria-pressed="true"]{background:var(--tab);color:var(--chrome-fg);font-weight:600}
 @keyframes pulse{50%{opacity:.35}}
-
-.toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding:8px 10px;background:var(--tab);border-bottom:1px solid var(--chrome-line)}
-.toolbar .field{flex:1 1 300px;min-width:0}
-.toolbar label{display:block;font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 3px 4px}
-.toolbar textarea{width:100%;min-height:40px;max-height:150px;resize:vertical;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-2);line-height:1.4}
-.toolbar textarea:focus{outline:none;border-color:var(--accent);background:var(--panel)}
-.tb-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 11px;cursor:pointer;white-space:nowrap;font-size:12.5px}
 .btn:hover{background:var(--panel-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
@@ -133,10 +141,14 @@ button.light::after{content:attr(data-glyph);position:absolute;inset:0;display:g
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.danger{border-color:var(--stop-ring);color:var(--stop)}
 .btn.sm{padding:4px 9px;font-size:12px}
+.btn.tt{border-color:var(--k-restore);color:var(--k-restore)}
 .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 .count{font:11px var(--font-mono);padding:0 5px;border-radius:999px;background:var(--line);color:var(--fg)}
 kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px solid currentColor;opacity:.8}
 .capbar{display:flex;align-items:center;padding:7px 12px;background:var(--stop-soft);color:var(--stop);border-bottom:1px solid var(--stop-ring);font-weight:550;line-height:1.4}
+.ttbanner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 12px;background:var(--tt-soft);border-bottom:1px solid var(--k-restore);font-size:12.5px;line-height:1.4}
+.ttbanner .txt{flex:1;min-width:220px}
+.ttbanner b{color:var(--k-restore)}
 
 .panes{flex:1;min-height:0;min-width:0;display:grid;gap:10px;padding:10px;overflow:auto;background:var(--chrome)}
 .empty-panes{grid-column:1/-1;display:grid;place-items:center;color:var(--muted);text-align:center;line-height:1.5}
@@ -144,12 +156,15 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .pane[data-status="run"]{box-shadow:0 0 0 2.5px var(--run-ring)}
 .pane[data-status="done"]{box-shadow:0 0 0 2.5px var(--ok-ring)}
 .pane[data-status="stop"]{box-shadow:0 0 0 2.5px var(--stop-ring)}
+.pane.ghost{outline:2px dashed var(--muted);outline-offset:-2px;opacity:.85}
+.app.past .pane-head{background:var(--tt-soft)}
 .pane-head{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .pane-head .who{font-weight:650;color:var(--fg)}
 .pane-head .ep{font-family:var(--font-mono);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .badge{flex:none;font-size:10.5px;font-weight:650;padding:1px 7px;border-radius:999px}
 .badge.free{background:var(--ok-soft);color:var(--ok)}
 .badge.paused{background:var(--stop-soft);color:var(--stop)}
+.badge.past{background:var(--panel);color:var(--k-restore);border:1px solid var(--k-restore)}
 .tool{flex:none;border:1px solid var(--line);background:transparent;border-radius:6px;padding:1px 8px;cursor:pointer;font-size:11px}
 .tool[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
 .wstatus{display:flex;gap:12px;padding:4px 10px;background:var(--panel-2);border-top:1px solid var(--line);color:var(--muted);font:11px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
@@ -181,6 +196,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .ptop .title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pick{border:0;background:transparent;color:var(--p-fg);padding:3px 4px;border-radius:6px;cursor:pointer;max-width:100%;font-weight:600}
 .pick:hover{background:var(--p-user)}
+.pick:disabled{cursor:default;opacity:.9}
 .pick option{color:#111;background:#fff}
 .thread{flex:1;min-height:0;overflow-y:auto;padding:4px 16px 10px;display:flex;flex-direction:column;gap:12px}
 .greet{margin:auto;text-align:center;font-family:var(--p-font);font-size:22px;line-height:1.3;padding:12px;text-wrap:balance}
@@ -222,6 +238,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .fixed{font-size:12px;color:var(--p-muted);padding:2px 8px;border:1px dashed var(--p-line);border-radius:999px}
 .pill{border:1px solid var(--p-line);background:transparent;border-radius:999px;padding:3px 10px;font-size:12px;color:var(--p-muted);cursor:pointer}
 .pill[aria-pressed="true"]{color:var(--p-accent);border-color:var(--p-accent)}
+.pill:disabled{cursor:default}
 .mcpchip{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--p-user);color:var(--p-fg)}
 .senddot{margin-left:auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--p-accent);color:var(--p-bg);font-weight:700;flex:none}
 .page[data-skin="claude"] .senddot{border-radius:9px}
@@ -236,15 +253,23 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .trace-list .ty{color:var(--accent)}
 .trace-list .dt{overflow-wrap:anywhere}
 
-/* Floating repo window */
-.fw{position:absolute;z-index:20;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-win);box-shadow:var(--shadow),0 0 0 1px var(--chrome-line);overflow:hidden;resize:both;min-width:320px;min-height:240px;max-width:calc(100% - 16px);max-height:calc(100% - 16px)}
-.fw.max{inset:12px 16px 14px!important;width:auto!important;height:auto!important;max-width:none;max-height:none;resize:none}
+/* Floating windows */
+.fw{position:absolute;z-index:40;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-win);box-shadow:var(--shadow),0 0 0 1px var(--chrome-line);overflow:hidden;resize:both;min-width:300px;min-height:200px}
+.fw.max{left:16px!important;top:36px!important;right:16px;bottom:30px;width:auto!important;height:auto!important;resize:none}
 .fw-bar{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;background:var(--chrome-2);border-bottom:1px solid var(--chrome-line);cursor:grab;user-select:none;touch-action:none;flex:none}
 .fw-bar:active{cursor:grabbing}
-.fw-title{font-weight:650;font-size:12.5px;color:var(--chrome-fg)}
-.branch{font:11px var(--font-mono);padding:1px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--chrome-line);color:var(--chrome-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fw-title{font-weight:650;font-size:12.5px;color:var(--chrome-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.branch{font:11px var(--font-mono);padding:1px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--chrome-line);color:var(--chrome-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-left:auto}
+.app.past .fw .branch{border-color:var(--k-restore);color:var(--k-restore)}
+.fwbody{flex:1;min-height:0;display:flex;flex-direction:column}
+.tt{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel-2);flex:none}
+.tt .lbl{font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);flex:none}
+.tt input[type="range"]{flex:1;min-width:60px;accent-color:var(--k-restore)}
+.tt button{flex:none;min-width:26px;height:24px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer}
+.ttl{font:11px var(--font-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+.app.past .ttl{color:var(--k-restore);font-weight:600}
 .rtabs{display:flex;gap:2px;padding:4px 10px 0;border-bottom:1px solid var(--line);background:var(--panel);flex:none}
-.rtabs button{border:0;border-bottom:2px solid transparent;background:none;padding:7px 10px 6px;cursor:pointer;color:var(--muted);font-size:12.5px}
+.rtabs button{border:0;border-bottom:2px solid transparent;background:none;padding:7px 10px 6px;cursor:pointer;color:var(--muted);font-size:12.5px;white-space:nowrap}
 .rtabs button[aria-selected="true"]{color:var(--fg);font-weight:600;border-bottom-color:var(--accent)}
 .rview{flex:1;min-height:0;overflow:auto}
 .rview.files{display:flex;flex-direction:column;overflow:hidden}
@@ -258,17 +283,24 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .kind[data-k="tool"]{background:var(--k-tool)}
 .kind[data-k="run"]{background:var(--k-run)}
 .kind[data-k="stop"]{background:var(--stop-ring)}
+.kind[data-k="restore"]{background:var(--k-restore)}
+.kind[data-k="reset"]{background:var(--k-init)}
 .kind[data-k="pending"]{background:var(--run-ring);animation:pulse 1s infinite}
 .wc{margin:10px 12px;border:1.5px dashed var(--line);border-radius:10px;padding:10px}
 .wc.dirty{border-color:var(--accent)}
+.wc.past{border-color:var(--k-restore);background:var(--tt-soft)}
 .wc h3{margin:0 0 4px;font-size:12.5px}
 .wc p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.wc .row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
 .changes{margin:6px 0 8px;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
 .changes li{display:flex;gap:7px;align-items:flex-start}
 .changes .kind{margin-top:1px}
-.commits{list-style:none;margin:0;padding:0 0 12px}
+.commits{list-style:none;margin:0;padding:0}
+#commits{padding-bottom:12px}
 .cm{border-top:1px solid var(--line)}
 .cm.fresh{animation:fresh .6s ease-out}
+.cm.future{opacity:.42}
+.cm.sel{background:var(--tt-soft);box-shadow:inset 3px 0 var(--k-restore)}
 @keyframes fresh{from{background:var(--panel-2)}}
 .cm-head{display:grid;grid-template-columns:20px 1fr;gap:4px 9px;width:100%;padding:9px 12px;border:0;background:none;text-align:left;cursor:pointer}
 .cm-head:hover{background:var(--panel-2)}
@@ -295,24 +327,29 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 
 .flist{flex:0 1 auto;max-height:48%;overflow:auto;border-bottom:1px solid var(--line);padding:4px 0 8px}
 .sec{padding:8px 12px 3px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650}
-.arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:2px 12px 4px}
-.art{display:flex;flex-direction:column;gap:2px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:left;cursor:pointer;font-size:12px}
-.art:hover,.art[aria-current="true"]{border-color:var(--accent)}
+.arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;padding:2px 12px 4px}
+.art{display:flex;flex-direction:column;gap:4px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:12px}
+.art[aria-current="true"]{border-color:var(--accent)}
 .art small{color:var(--muted);font:10.5px var(--font-mono)}
+.art .row{display:flex;gap:4px}
+.art .row button{flex:1;border:1px solid var(--line);background:var(--panel-2);border-radius:6px;padding:2px 6px;cursor:pointer;font-size:11.5px}
 .frow{display:flex;align-items:center;gap:6px;width:100%;padding:2px 12px;border:0;background:none;text-align:left;cursor:pointer;font:11.5px/1.6 var(--font-mono);color:var(--fg)}
 .frow:hover{background:var(--panel-2)}
 .frow[aria-current="true"]{background:var(--panel-2);box-shadow:inset 2px 0 var(--accent)}
 .frow.dir{cursor:default;color:var(--muted)}
 .frow .sz{margin-left:auto;color:var(--muted);font-size:10.5px}
 .viewer{flex:1;min-height:0;display:flex;flex-direction:column}
-.vhead{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);font:11.5px var(--font-mono)}
+.vhead{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);font:11.5px var(--font-mono);flex:none}
 .vhead .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vhead .at{flex:none;color:var(--muted)}
+.app.past .vhead .at{color:var(--k-restore);font-weight:600}
+.vhead button.win{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:1px 7px;font:11px var(--font-ui);cursor:pointer}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex:none}
 .seg button{border:0;background:transparent;padding:2px 8px;cursor:pointer;font:11.5px var(--font-ui);color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);font-weight:600}
 .vbody{flex:1;min-height:0;overflow:auto;background:var(--panel)}
 .vbody pre{margin:0;padding:10px 12px;font:11.5px/1.55 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
-.vbody iframe{display:block;width:100%;height:100%;min-height:220px;border:0;background:#fff}
+.vbody iframe{display:block;width:100%;height:100%;min-height:200px;border:0;background:#fff}
 .vempty{display:grid;place-items:center;height:100%;padding:16px;color:var(--muted);text-align:center;line-height:1.5}
 .shot{margin:12px;aspect-ratio:16/10;max-width:100%;border:1px dashed var(--line);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:12px}
 
@@ -327,17 +364,16 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .card .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .card input[type="text"]{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);font:12px var(--font-mono)}
 .card input[type="file"]{font-size:12px;max-width:100%}
-.card code{font:11px var(--font-mono)}
 .tbl{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
 .tbl th,.tbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}
 .tbl th:first-child,.tbl td:first-child{text-align:left}
 .tbl th{font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 .cmds{margin:0;padding:8px 10px;border-radius:8px;background:var(--panel-2);font:11px/1.6 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 
-.dock{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:25;display:flex;gap:6px;padding:5px 8px;border-radius:14px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:var(--shadow),0 0 0 1px var(--bar-line)}
-.dock button{display:flex;align-items:center;gap:7px;border:0;border-radius:9px;background:var(--panel);padding:5px 10px;cursor:pointer;font-size:12px}
+.dock{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:9000;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:calc(100% - 32px);padding:5px 8px;border-radius:14px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:var(--shadow),0 0 0 1px var(--bar-line)}
+.dock button{display:flex;align-items:center;gap:7px;border:0;border-radius:9px;background:var(--panel);padding:5px 10px;cursor:pointer;font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-.popover{position:absolute;z-index:40;width:330px;max-width:calc(100% - 32px);max-height:70%;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.popover{position:absolute;z-index:10000;width:330px;max-width:calc(100% - 32px);max-height:70%;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .popover h3{margin:6px 8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .popover .item{display:flex;gap:10px;align-items:center;width:100%;padding:7px 8px;border:0;border-radius:8px;background:transparent;text-align:left;cursor:pointer}
 .popover .item:hover{background:var(--panel-2)}
@@ -349,24 +385,23 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--panel);transition:left .15s}
 [aria-checked="true"] .sw{background:var(--k-mcp)}
 [aria-checked="true"] .sw::after{left:14px}
-.overlay{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:var(--scrim)}
+.overlay{position:fixed;inset:0;z-index:10002;display:grid;place-items:center;padding:16px;background:var(--scrim)}
 .sheet{width:100%;max-width:760px;max-height:88%;overflow:auto;padding:18px 20px;background:var(--panel);border-radius:14px;box-shadow:var(--shadow)}
 .sheet h2{margin:0 0 4px;font-size:17px;text-wrap:balance}
 .sheet p{margin:0 0 12px;color:var(--muted);line-height:1.5;max-width:68ch}
 .sheet pre{margin:0 0 14px;padding:12px;border-radius:10px;background:var(--panel-2);overflow:auto;font:11.5px/1.55 var(--font-mono)}
 .sheet .row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .foot{padding:4px 16px;font-size:11px;color:var(--bar-muted);background:var(--bar-bg);border-top:1px solid var(--bar-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.toast{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);z-index:60;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:var(--fg);color:var(--panel);font-size:12.5px;box-shadow:var(--shadow)}
+.toast{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);z-index:10001;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:var(--fg);color:var(--panel);font-size:12.5px;box-shadow:var(--shadow)}
 
 @media (max-width:720px){
   .menubar{gap:10px;overflow:hidden}
   .menubar .session,.menubar .clock{display:none}
   .budget .lbl{display:none}
   .view{display:none}
-  .tabbar .lights{display:none}
+  .topbar .lights{display:none}
   .toolbar .tb-actions{width:100%}
   .toolbar .tb-actions .btn.primary{flex:1;justify-content:center}
-  .fw{left:16px!important;right:16px;width:auto!important;top:48px!important;height:62%!important;resize:none}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
@@ -388,65 +423,40 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 
   <div class="desktop" id="desktop">
     <div class="browser">
-      <div class="tabbar">
+      <div class="topbar">
         <span class="lights" aria-hidden="true"><span class="light close"></span><span class="light min"></span><span class="light max"></span></span>
+        <form class="toolbar" id="broadcast">
+          <div class="field">
+            <label for="prompt">Prompt · typed into every tab at once</label>
+            <textarea id="prompt" rows="2" placeholder="Type once. Enter sends to every tab, Shift+Enter adds a line."></textarea>
+          </div>
+          <div class="tb-actions">
+            <button type="submit" class="btn primary" id="sendBtn">Send to 3 tabs <kbd>Enter</kbd></button>
+            <button type="button" class="btn danger" id="stopBtn" hidden>Stop all</button>
+            <button type="button" class="btn" id="mcpBtn" aria-haspopup="true">MCP &amp; tools <span class="count" id="mcpCount">0</span></button>
+            <button type="button" class="btn" id="repoBtn" aria-pressed="true">Repo <span class="count" id="repoCount">0</span></button>
+            <button type="button" class="btn" id="exportBtn">Export</button>
+          </div>
+        </form>
+      </div>
+      <div class="tabbar">
         <div class="tabs" id="tabs" role="tablist" aria-label="Variant tabs"></div>
         <button class="newtab" id="newTab" type="button">+ New tab</button>
         <span class="view" role="group" aria-label="Layout">
           <button id="viewSplit" type="button" aria-pressed="true">Side by side</button><button id="viewOne" type="button" aria-pressed="false">One tab</button>
         </span>
       </div>
-      <form class="toolbar" id="broadcast">
-        <div class="field">
-          <label for="prompt">Prompt · typed into every tab at once</label>
-          <textarea id="prompt" rows="2" placeholder="Type once. Enter sends to every tab, Shift+Enter adds a line."></textarea>
-        </div>
-        <div class="tb-actions">
-          <button type="submit" class="btn primary" id="sendBtn">Send to 3 tabs <kbd>Enter</kbd></button>
-          <button type="button" class="btn danger" id="stopBtn" hidden>Stop all</button>
-          <button type="button" class="btn" id="mcpBtn" aria-haspopup="true">MCP &amp; tools <span class="count" id="mcpCount">0</span></button>
-          <button type="button" class="btn" id="repoBtn" aria-pressed="true">Repo <span class="count" id="repoCount">0</span></button>
-          <button type="button" class="btn" id="exportBtn">Export</button>
-        </div>
-      </form>
+      <div class="ttbanner" id="ttBanner" hidden>
+        <span class="txt" id="ttText"></span>
+        <button type="button" class="btn sm tt" id="ttRestore">Restore this state</button>
+        <button type="button" class="btn sm" id="ttBranch">Branch from here</button>
+        <button type="button" class="btn sm primary" id="ttBack">Back to latest</button>
+      </div>
       <div class="capbar" id="capbar" hidden></div>
       <div class="panes" id="panes"></div>
     </div>
-
-    <section class="fw" id="repo" aria-label="Experiment repo window">
-      <header class="fw-bar" id="repoBar">
-        <div class="lights">
-          <button class="light close" type="button" data-glyph="×" id="repoClose" aria-label="Close the repo window"></button>
-          <button class="light min" type="button" data-glyph="–" id="repoMin" aria-label="Minimize the repo window to the dock"></button>
-          <button class="light max" type="button" data-glyph="+" id="repoMax" aria-label="Maximize or restore the repo window"></button>
-        </div>
-        <span class="fw-title">Experiment repo</span>
-        <span class="branch" id="branchChip">main</span>
-      </header>
-      <nav class="rtabs" role="tablist" aria-label="Repo views">
-        <button type="button" role="tab" data-view="changes" aria-selected="true">Changes</button>
-        <button type="button" role="tab" data-view="files" aria-selected="false">Files &amp; artifacts <span class="count" id="artCount">0</span></button>
-        <button type="button" role="tab" data-view="export" aria-selected="false">Export &amp; restore</button>
-      </nav>
-      <div class="rview" id="viewChanges">
-        <div class="legend" aria-label="Change types">
-          <span><i class="kind" data-k="prompt">P</i>prompt</span>
-          <span><i class="kind" data-k="config">C</i>model, effort, tabs</span>
-          <span><i class="kind" data-k="tool">T</i>tool</span>
-          <span><i class="kind" data-k="mcp">M</i>MCP server</span>
-          <span><i class="kind" data-k="run">R</i>reply saved</span>
-        </div>
-        <div class="wc" id="wc"></div>
-        <ol class="commits" id="commits"></ol>
-      </div>
-      <div class="rview files" id="viewFiles" hidden>
-        <div class="flist" id="flist"></div>
-        <div class="viewer" id="viewer"></div>
-      </div>
-      <div class="rview" id="viewExport" hidden></div>
-    </section>
-    <div class="dock" id="dock" hidden></div>
   </div>
+  <div class="dock" id="dock" hidden></div>
 
   <div class="foot">Mockup with simulated replies. Tabs call each provider's API; pages are styled after each provider's chat layout for planning and aren't affiliated with them. Model names and non-Anthropic prices are placeholders.</div>
 </div>
@@ -518,6 +528,7 @@ const MCP_CATALOG = [
   { name: 'memory', cmd: 'npx -y @modelcontextprotocol/server-memory', what: 'A small knowledge graph shared across runs', call: 'search_nodes', arg: 'query="metrics"' },
 ];
 const MULT = { minimal: 0.15, low: 0.4, medium: 0.7, high: 1, xhigh: 1.4, max: 1.9, '4k': 0.4, '16k': 1, '32k': 1.6, dynamic: 0.9, '1k': 0.25, '8k': 0.8, '24k': 1.4, on: 1 };
+const GLYPH = { prompt: 'P', rerun: '↻', config: 'C', tool: 'T', mcp: 'M', run: 'R', stop: 'R', pending: 'R', init: 'I', restore: '↶', reset: '⟲' };
 
 function greetingByHour() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
@@ -581,9 +592,10 @@ const SAMPLE = {
 const POINTS = ['Pin down what a good answer looks like before writing one.', 'List the assumptions so a reader can check them.', 'Give the shortest version first, then the detail.', 'Name one way this could go wrong and how you would notice.', 'Say what you would measure to know it worked.', 'Keep the first version small enough to throw away.', 'Ask which constraint matters most if two of them conflict.'];
 const THOUGHTS = ['Decide the format first, then fill it in.', 'The request is short, so keep the answer short and concrete.', 'Check whether anything here needs current information.', 'Lead with the answer and keep caveats to one line.'];
 
-const st = { tabs: [], seq: 0, active: null, view: 'split', spend: 0, cap: 0.50, running: 0, runNo: 0, mcp: new Set(), head: null, commits: [], exp: null, takes: {},
-  files: new Map(), openFile: null, fileMode: 'preview', branch: 'main', branches: ['main'], repo: 'open', rview: 'changes', ledger: [] };
-const promptEl = $('#prompt'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn'), panesEl = $('#panes'), tabsEl = $('#tabs'), app = $('#app'), repoEl = $('#repo');
+const st = { tabs: [], closed: [], tabSeq: 0, cseq: 0, active: null, view: 'split', spend: 0, cap: 0.50, running: 0, runNo: 0, mcp: new Set(), head: null,
+  commits: [], exp: null, takes: {}, files: new Map(), openFile: null, fileMode: 'preview', branch: 'main', branches: ['main'], rview: 'changes',
+  ledger: [], tt: null, draft: '', restoredFrom: null };
+const promptEl = $('#prompt'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn'), panesEl = $('#panes'), tabsEl = $('#tabs'), app = $('#app');
 
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function sha() { return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 7); }
@@ -594,7 +606,7 @@ function bytes(n) { return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`; 
 function estTok(s) { return Math.max(1, Math.round(s.trim().split(/\s+/).length * 1.35)); }
 function jitter(ms, seed) { return Math.round(ms * (0.75 + ((seed % 100) / 100) * 0.5)); }
 function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-') || 'prompt'; }
-function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/`([^`]+)`/g, '<code>$1</code>'); }
 function renderMd(md) {
   let html = '', inCode = false, code = [], list = [], para = [];
@@ -611,11 +623,108 @@ function renderMd(md) {
   flushP(); flushL();
   return html;
 }
-function toast(msg) { const t = el('div', 'toast', msg); t.setAttribute('role', 'status'); app.appendChild(t); setTimeout(() => t.remove(), 3200); }
+function toast(msg) { const t = el('div', 'toast', msg); t.setAttribute('role', 'status'); app.appendChild(t); setTimeout(() => t.remove(), 3600); }
 
-/* ---------- money: paid vs free tabs ---------- */
+/* ---------- money ---------- */
 function isFree(t) { return t.model.in === 0 && t.model.out === 0; }
 function capReached() { return st.spend >= st.cap; }
+
+/* ---------- floating window manager ---------- */
+let zTop = 40;
+const wins = [];
+function makeWin(o) {
+  const w = { title: o.title, state: 'open', onClose: o.onClose };
+  const s = el('section', 'fw'); s.setAttribute('aria-label', o.title);
+  s.innerHTML = `<header class="fw-bar"><div class="lights"><button class="light close" type="button" data-glyph="×"></button><button class="light min" type="button" data-glyph="–"></button><button class="light max" type="button" data-glyph="+"></button></div><span class="fw-title"></span><span class="branch"></span></header>`;
+  w.el = s; w.bar = $('.fw-bar', s); w.sub = $('.branch', s);
+  $('.fw-title', s).textContent = o.title;
+  $('.light.close', s).setAttribute('aria-label', `Close ${o.title}`);
+  $('.light.min', s).setAttribute('aria-label', `Minimize ${o.title} to the dock`);
+  $('.light.max', s).setAttribute('aria-label', `Maximize or restore ${o.title}`);
+  s.appendChild(o.body);
+  app.appendChild(s);
+  const A = app.getBoundingClientRect();
+  const W = Math.min(o.w, A.width - 32), H = Math.min(o.h, A.height - 110);
+  Object.assign(s.style, { width: W + 'px', height: H + 'px', left: Math.max(16, Math.min(o.x, A.width - W - 16)) + 'px', top: Math.max(34, Math.min(o.y, A.height - H - 30)) + 'px' });
+  $('.light.close', s).addEventListener('click', () => (w.onClose ? w.onClose() : destroyWin(w)));
+  $('.light.min', s).addEventListener('click', () => setWinState(w, 'min'));
+  $('.light.max', s).addEventListener('click', () => s.classList.toggle('max'));
+  s.addEventListener('pointerdown', () => focusWin(w), true);
+  let drag = null;
+  w.bar.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || s.classList.contains('max')) return;
+    const r = s.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    w.bar.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  w.bar.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const A2 = app.getBoundingClientRect(), r = s.getBoundingClientRect();
+    s.style.left = Math.min(Math.max(80 - r.width, e.clientX - A2.left - drag.dx), A2.width - 80) + 'px';
+    s.style.top = Math.min(Math.max(0, e.clientY - A2.top - drag.dy), A2.height - 40) + 'px';
+  });
+  const end = () => { drag = null; };
+  w.bar.addEventListener('pointerup', end); w.bar.addEventListener('pointercancel', end);
+  w.bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) s.classList.toggle('max'); });
+  wins.push(w); focusWin(w);
+  return w;
+}
+function focusWin(w) { w.el.style.zIndex = String(++zTop); }
+function setWinState(w, state) { w.state = state; w.el.hidden = state !== 'open'; if (state === 'open') focusWin(w); paintDock(); if (w.onState) w.onState(state); }
+function destroyWin(w) { w.el.remove(); wins.splice(wins.indexOf(w), 1); paintDock(); }
+function paintDock() {
+  const d = $('#dock'); d.innerHTML = '';
+  wins.filter((w) => w.state === 'min').forEach((w) => {
+    const b = el('button'); b.type = 'button'; b.title = `Restore ${w.title}`;
+    const dot = el('span', 'dot'); dot.style.background = w === repoWin ? 'var(--k-run)' : 'var(--accent)';
+    b.append(dot, document.createTextNode(w.title));
+    b.addEventListener('click', () => setWinState(w, 'open'));
+    d.appendChild(b);
+  });
+  d.hidden = !d.children.length;
+}
+
+/* ---------- repo window ---------- */
+const repoBody = el('div', 'fwbody');
+repoBody.innerHTML = `
+  <div class="tt" role="group" aria-label="Time travel">
+    <span class="lbl">Time travel</span>
+    <button type="button" id="ttPrev" aria-label="One commit back">‹</button>
+    <input type="range" id="ttRange" min="1" max="1" value="1" aria-label="Pick a commit to preview">
+    <button type="button" id="ttNext" aria-label="One commit forward">›</button>
+    <span class="ttl" id="ttLabel">latest</span>
+  </div>
+  <nav class="rtabs" role="tablist" aria-label="Repo views">
+    <button type="button" role="tab" data-view="changes" aria-selected="true">Changes</button>
+    <button type="button" role="tab" data-view="files" aria-selected="false">Files &amp; artifacts <span class="count" id="artCount">0</span></button>
+    <button type="button" role="tab" data-view="export" aria-selected="false">Export &amp; restore</button>
+  </nav>
+  <div class="rview" id="viewChanges">
+    <div class="legend" aria-label="Change types">
+      <span><i class="kind" data-k="prompt">P</i>prompt</span>
+      <span><i class="kind" data-k="config">C</i>model, effort, tabs</span>
+      <span><i class="kind" data-k="tool">T</i>tool</span>
+      <span><i class="kind" data-k="mcp">M</i>MCP</span>
+      <span><i class="kind" data-k="run">R</i>reply</span>
+      <span><i class="kind" data-k="restore">↶</i>restore</span>
+      <span><i class="kind" data-k="reset">⟲</i>reset</span>
+    </div>
+    <div class="wc" id="wc"></div>
+    <ol class="commits" id="pendingList"></ol>
+    <ol class="commits" id="commits"></ol>
+  </div>
+  <div class="rview files" id="viewFiles" hidden>
+    <div class="flist" id="flist"></div>
+    <div class="viewer" id="viewer"></div>
+  </div>
+  <div class="rview" id="viewExport" hidden></div>`;
+const repoWin = makeWin({ title: 'Experiment repo', body: repoBody, w: 450, h: 600, x: 9999, y: 168, onClose: () => setWinState(repoWin, 'closed') });
+repoWin.onState = (s) => $('#repoBtn').setAttribute('aria-pressed', String(s === 'open'));
+repoWin.el.addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea,select')) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); stepTT(-1); }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); stepTT(1); }
+});
 
 /* ---------- harness state as files ---------- */
 function snapshot() {
@@ -640,10 +749,11 @@ function toYaml(s) {
   return L.join('\n');
 }
 function promptMd(text, v) { return `# Prompt v${v}\n\n${text}`; }
-function workingPrompt() { return promptEl.value.trim() || (st.head ? st.head.prompt : ''); }
+function workingPrompt() { const v = st.tt ? st.draft : promptEl.value; return v.trim() || (st.head ? st.head.prompt : ''); }
 const README = (slug) => `# Experiment: ${slug}
 
-This folder is a git repository written by the multi-ai harness. History is append-only.
+This folder is a git repository written by the multi-ai harness. History is append-only:
+restores and resets are new commits, never rewrites.
 
 - harness.yaml: tabs, models, effort, tools, MCP servers, spend cap
 - prompt.md: the current prompt (older versions are in git history)
@@ -655,9 +765,9 @@ Restore or analyse:
     git clone experiment.bundle my-copy     # or unzip the .zip
     git log --oneline
     git diff <sha1> <sha2> -- prompt.md harness.yaml
-    git checkout -b retry <sha>             # branch from any state
+    git checkout <sha> -- prompt.md harness.yaml && git commit -m "restore <sha>"
 `;
-function putFile(path, content, kind) { st.files.set(path, { content, kind: kind || (path.endsWith('.html') ? 'html' : path.endsWith('.png') ? 'png' : 'text') }); }
+function putFile(path, content, kind) { st.files.set(path, { content, kind: kind || (path.endsWith('.html') ? 'html' : path.endsWith('.png') ? 'png' : 'text'), label: st.files.get(path)?.label }); }
 
 function changesSince() {
   const h = st.head; if (!h) return [];
@@ -676,9 +786,10 @@ function changesSince() {
   cur.mcp.forEach((n) => { if (!h.snap.mcp.includes(n)) out.push({ k: 'mcp', s: `You connected MCP server ${n}` }); });
   h.snap.mcp.forEach((n) => { if (!cur.mcp.includes(n)) out.push({ k: 'mcp', s: `You disconnected MCP server ${n}` }); });
   if (cur.cap !== h.snap.cap) out.push({ k: 'config', s: `You changed the spend cap from $${h.snap.cap.toFixed(2)} to $${cur.cap.toFixed(2)}` });
+  if (out.length && st.restoredFrom) out.unshift({ k: 'restore', s: `You restored the state from ${st.restoredFrom}` });
   return out;
 }
-function kindOf(changes) { const ks = changes.map((c) => c.k); return ks.includes('mcp') ? 'mcp' : ks.includes('tool') ? 'tool' : ks.includes('config') ? 'config' : 'prompt'; }
+function kindOf(changes) { const ks = changes.map((c) => c.k); return ks.includes('restore') ? 'restore' : ks.includes('mcp') ? 'mcp' : ks.includes('tool') ? 'tool' : ks.includes('config') ? 'config' : 'prompt'; }
 function titleOf(changes) {
   if (changes.length === 1) return changes[0].s;
   if (changes.length === 2) return `${changes[0].s}, and ${changes[1].s.replace(/^You /, '')}`;
@@ -719,8 +830,8 @@ function fileDiff(f) {
   const head = el('div', 'fname');
   head.append(el('span', 'p', f.name), el('span', 's', f.note ? f.note : f.before == null ? 'new file' : 'modified'));
   if (st.files.has(f.name)) {
-    const b = el('button', null, st.files.get(f.name).kind === 'html' ? 'Preview' : 'Open'); b.type = 'button';
-    b.addEventListener('click', () => openFile(f.name));
+    const b = el('button', null, 'Open in window'); b.type = 'button';
+    b.addEventListener('click', (e) => { e.stopPropagation(); openFileWin(f.name); });
     head.appendChild(b);
   }
   box.appendChild(head);
@@ -754,105 +865,228 @@ function fileDiff(f) {
   return box;
 }
 
-/* ---------- repo window: Changes ---------- */
-function renderWorking() {
-  const wc = $('#wc'); wc.innerHTML = '';
-  if (!st.head) return;
-  const ch = changesSince();
-  wc.classList.toggle('dirty', ch.length > 0);
-  if (!ch.length) {
-    wc.append(el('h3', null, 'Nothing new since the last run'), el('p', null, "Edit the prompt, a tab's model or effort, web search, or MCP servers, and the diff shows here before you send. Sending commits it; each tab's reply is committed as it finishes."));
-    return;
-  }
-  wc.appendChild(el('h3', null, `Not sent yet · ${ch.length} change${ch.length === 1 ? '' : 's'}${st.branch !== 'main' ? ` · on ${st.branch}` : ''}`));
-  const ul = el('ul', 'changes');
-  ch.forEach((c) => { const li = el('li'); const k = el('i', 'kind', c.k[0].toUpperCase()); k.dataset.k = c.k; li.append(k, el('span', null, c.s)); ul.appendChild(li); });
-  wc.appendChild(ul);
-  workingFiles().forEach((f) => wc.appendChild(fileDiff(f)));
-  wc.appendChild(el('p', null, 'Press Send to commit these and run every tab.'));
-}
+/* ---------- commits ---------- */
 function addCommit(c) {
-  c.sha = sha(); c.ts = c.ts || stamp(); c.branch = st.branch;
+  c.n = ++st.cseq; c.sha = sha(); c.ts = c.ts || stamp(); c.branch = st.branch;
+  c.state = { snap: st.head.snap, prompt: st.head.prompt, version: st.head.version, yaml: st.head.yaml, files: new Map(st.files) };
   st.commits.unshift(c);
   c.li = el('li', 'cm fresh');
   $('#commits').prepend(c.li);
   setTimeout(() => c.li.classList.remove('fresh'), 700);
   paintCommit(c);
   $('#repoCount').textContent = String(st.commits.length);
-  paintBranch();
+  paintTT();
   return c;
+}
+function addPending(title) {
+  const li = el('li', 'cm');
+  const p = { li, set(t) { li.innerHTML = ''; const h = el('div', 'cm-head'); const k = el('i', 'kind', 'R'); k.dataset.k = 'pending'; h.append(k, el('span', 'cm-title', t), el('span', 'cm-meta', 'running · committed when the reply finishes')); li.appendChild(h); } };
+  p.set(title); $('#pendingList').prepend(li);
+  return p;
 }
 function paintCommit(c) {
   c.li.innerHTML = '';
+  const cur = st.tt || st.cseq;
+  c.li.classList.toggle('future', !!st.tt && c.n > st.tt);
+  c.li.classList.toggle('sel', !!st.tt && c.n === st.tt);
   const head = el('button', 'cm-head'); head.type = 'button'; head.setAttribute('aria-expanded', String(!!c.open));
-  const glyph = { prompt: 'P', rerun: '↻', config: 'C', tool: 'T', mcp: 'M', run: 'R', stop: 'R', pending: 'R', init: 'I' }[c.kind];
-  const k = el('i', 'kind', glyph); k.dataset.k = c.kind;
-  const meta = el('span', 'cm-meta'); meta.innerHTML = `<b>${c.sha}</b> · ${c.branch !== 'main' ? esc(c.branch) + ' · ' : ''}${esc(c.ts.human)} · ${c.ts.unix}`;
+  head.title = 'Preview the state right after this commit';
+  const k = el('i', 'kind', GLYPH[c.kind]); k.dataset.k = c.kind;
+  const meta = el('span', 'cm-meta'); meta.innerHTML = `<b>${c.sha}</b> · ${c.n}/${st.cseq} · ${c.branch !== 'main' ? esc(c.branch) + ' · ' : ''}${esc(c.ts.human)} · ${c.ts.unix}`;
   head.append(k, el('span', 'cm-title', c.title), meta);
-  head.addEventListener('click', () => { c.open = !c.open; paintCommit(c); });
+  head.addEventListener('click', () => {
+    if (cur === c.n && c.open) { c.open = false; paintCommit(c); return; }
+    st.commits.forEach((x) => { if (x.open && x !== c) { x.open = false; paintCommit(x); } });
+    c.open = true;
+    setTT(c.n);
+  });
   c.li.appendChild(head);
   if (!c.open) return;
   const body = el('div', 'cm-body');
   if (c.changes && c.changes.length > 1) { const ul = el('ul'); c.changes.forEach((x) => ul.appendChild(el('li', null, x.s))); body.appendChild(ul); }
   const acts = el('div', 'cm-actions');
-  if (c.snap) {
-    const r = el('button', 'btn sm', 'Restore this state'); r.type = 'button'; r.title = 'Load this prompt and these settings as unsent changes';
+  if (c.n !== st.cseq) {
+    const r = el('button', 'btn sm tt', 'Restore this state'); r.type = 'button'; r.title = 'Bring back this prompt and these settings as unsent changes';
     r.addEventListener('click', () => restore(c, false));
-    const b = el('button', 'btn sm', 'Branch from here'); b.type = 'button'; b.title = 'Start a new branch from this state; main stays as it is';
-    b.addEventListener('click', () => restore(c, true));
-    acts.append(r, b);
+    acts.appendChild(r);
   }
-  (c.files || []).filter((f) => /artifacts\//.test(f.name)).forEach((f) => { const p = el('button', 'btn sm', 'Preview artifact'); p.type = 'button'; p.addEventListener('click', () => openFile(f.name)); acts.appendChild(p); });
-  if (acts.children.length) body.appendChild(acts);
+  const b = el('button', 'btn sm', 'Branch from here'); b.type = 'button'; b.title = 'Start a new branch from this state; main stays as it is';
+  b.addEventListener('click', () => restore(c, true));
+  acts.appendChild(b);
+  (c.files || []).filter((f) => /artifacts\//.test(f.name)).forEach((f) => { const p = el('button', 'btn sm', 'Open artifact in window'); p.type = 'button'; p.addEventListener('click', () => openFileWin(f.name)); acts.appendChild(p); });
+  body.appendChild(acts);
   (c.files || []).forEach((f) => body.appendChild(fileDiff(f)));
-  if (!(c.files || []).length) body.appendChild(el('div', 'note', c.kind === 'pending' ? 'Files are committed when this tab finishes.' : c.kind === 'stop' ? 'Nothing was sent, so there are no files.' : 'No file changes. This commit marks a fresh take of the same prompt and settings.'));
+  if (!(c.files || []).length) body.appendChild(el('div', 'note', c.kind === 'stop' ? 'Nothing was sent, so there are no files.' : c.kind === 'reset' ? 'An empty commit that records the reset; the discarded changes are listed above.' : 'No file changes. This commit marks a fresh take of the same prompt and settings.'));
   c.li.appendChild(body);
 }
-function paintBranch() {
-  $('#branchChip').textContent = `${st.branch} · ${st.commits.length} commits`;
-}
+function paintAllCommits() { st.commits.forEach(paintCommit); }
 
-/* ---------- restore / branch ---------- */
-function restore(c, branch) {
-  if (st.running) { toast('Wait for the current run to finish first.'); return; }
-  const want = c.snap.tabs;
-  st.tabs.slice().forEach((t) => { if (!want.some((w) => w.id === pad(t.id))) closeTab(t); });
-  want.forEach((w) => {
+/* ---------- time travel ---------- */
+function previewCommit() { return st.tt ? st.commits.find((c) => c.n === st.tt) : null; }
+function filesNow() { const c = previewCommit(); return c ? c.state.files : st.files; }
+function setTT(n) {
+  if (n == null || n >= st.cseq) n = null;
+  if (n === st.tt) { paintAllCommits(); return; }
+  if (n && !st.tt) st.draft = promptEl.value;
+  if (!n && st.tt) promptEl.value = st.draft;
+  st.tt = n;
+  applyPreview();
+}
+function stepTT(d) { const cur = st.tt || st.cseq; const n = Math.min(st.cseq, Math.max(1, cur + d)); const c = st.commits.find((x) => x.n === n); st.commits.forEach((x) => { x.open = x === c; }); setTT(n); }
+function paintTT() {
+  const r = $('#ttRange'); r.max = String(st.cseq); r.value = String(st.tt || st.cseq);
+  const c = previewCommit();
+  $('#ttLabel').textContent = c ? `${c.sha} · ${c.n} of ${st.cseq}` : `latest · ${st.cseq} commits`;
+  $('#ttNext').disabled = !st.tt; $('#ttPrev').disabled = (st.tt || st.cseq) <= 1;
+  repoWin.sub.textContent = c ? `viewing ${c.sha}` : `${st.branch} · ${st.cseq} commits`;
+}
+$('#ttRange').addEventListener('input', (e) => { const n = +e.target.value; st.commits.forEach((x) => { x.open = x.n === n; }); setTT(n); });
+$('#ttPrev').addEventListener('click', () => stepTT(-1));
+$('#ttNext').addEventListener('click', () => stepTT(1));
+function viewTabs() {
+  const c = previewCommit();
+  if (!c) return st.tabs;
+  const ids = c.state.snap.tabs.map((x) => x.id);
+  return st.tabs.concat(st.closed).filter((t) => ids.includes(pad(t.id))).sort((a, b) => a.id - b.id);
+}
+function statusAt(t, n) {
+  const runs = t.runs.filter((r) => r.userSeq <= n);
+  const last = runs[runs.length - 1];
+  if (!last) return 'idle';
+  return last.replySeq && last.replySeq <= n ? last.final : 'run';
+}
+function viewStatus(t) { return st.tt ? statusAt(t, st.tt) : t.status; }
+function applyThread(t) {
+  const S = st.tt || Infinity; let runs = 0;
+  [...t.r.thread.children].forEach((e) => { if (e.dataset.seq) { e.hidden = +e.dataset.seq > S; if (!e.hidden && e.classList.contains('rundiv')) runs++; } });
+  t.r.greet.hidden = runs > 0;
+}
+function applyPreview() {
+  const c = previewCommit();
+  app.classList.toggle('past', !!c);
+  $('#ttBanner').hidden = !c;
+  if (c) $('#ttText').innerHTML = `<b>Time travel</b> · tabs, files and windows show the state right after <b>${c.sha}</b> (${c.n} of ${st.cseq}): ${esc(c.title)} · ${esc(c.ts.human)}. Nothing changes until you restore.`;
+  promptEl.readOnly = !!c;
+  if (c) promptEl.value = c.state.prompt;
+  $('#newTab').disabled = !!c; $('#mcpBtn').disabled = !!c;
+  st.tabs.concat(st.closed).forEach((t) => { buildControls(t); applyThread(t); refreshTab(t, true); });
+  layout(); syncMirror(); renderWorking(); paintAllCommits(); paintTT(); paintSendLabel(); refreshRepoViews(); fileWins.forEach(renderFileWin);
+  if (c && c.li && !$('#viewChanges').hidden) c.li.scrollIntoView({ block: 'nearest' });
+}
+$('#ttBack').addEventListener('click', () => setTT(null));
+$('#ttRestore').addEventListener('click', () => { const c = previewCommit(); if (c) restore(c, false); });
+$('#ttBranch').addEventListener('click', () => { const c = previewCommit(); if (c) restore(c, true); });
+
+/* ---------- restore / reset / commit without running ---------- */
+function restoreSnap(snap, prompt) {
+  st.tabs.slice().forEach((t) => { if (!snap.tabs.some((w) => w.id === pad(t.id))) closeTab(t, true); });
+  snap.tabs.forEach((w) => {
     let t = st.tabs.find((x) => pad(x.id) === w.id);
-    if (!t) t = addTab(w.api, w.model, w.raw);
+    if (!t) { t = st.closed.find((x) => pad(x.id) === w.id); if (t) revive(t); else t = addTab(w.api, w.model, w.raw); }
     if (!t) return;
     t.model = t.p.models.find((m) => m.id === w.model) || t.model; t.reason = w.raw; t.web = w.web;
-    buildControls(t); refreshTab(t);
   });
-  st.mcp = new Set(c.snap.mcp); $('#mcpCount').textContent = String(st.mcp.size); st.tabs.forEach(paintMcpChip);
-  st.cap = c.snap.cap; $('#cap').value = st.cap.toFixed(2);
-  promptEl.value = c.prompt || ''; syncMirror();
-  if (branch) { st.branch = `from-${c.sha}`; if (!st.branches.includes(st.branch)) st.branches.push(st.branch); paintBranch(); }
-  paintBudget(); renderWorking(); setRview('changes');
-  toast(branch ? `Now on branch ${st.branch}. The state from ${c.sha} is loaded as unsent changes; Send commits to this branch and main stays as it is.` : `The state from ${c.sha} is loaded as unsent changes. Review the diff, then Send to run it.`);
+  st.mcp = new Set(snap.mcp); $('#mcpCount').textContent = String(st.mcp.size);
+  st.cap = snap.cap; $('#cap').value = st.cap.toFixed(2);
+  promptEl.value = prompt === st.head.prompt ? '' : prompt;
+  st.tabs.forEach((t) => { buildControls(t); refreshTab(t); });
+  syncMirror(); paintBudget(); layout();
+}
+function restore(c, branch) {
+  if (st.running) { toast('Wait for the current run to finish first.'); return; }
+  st.tt = null; app.classList.remove('past');
+  restoreSnap(c.state.snap, c.state.prompt);
+  st.restoredFrom = c.sha;
+  if (branch) { st.branch = `from-${c.sha}`; if (!st.branches.includes(st.branch)) st.branches.push(st.branch); }
+  applyPreview(); setRview('changes');
+  toast(branch ? `On branch ${st.branch}. The state from ${c.sha} is staged; Send or Commit records it, Reset undoes it.` : `The state from ${c.sha} is staged as unsent changes. Commit or Send to record it, or Reset to undo it.`);
+}
+function resetWorking() {
+  const ch = changesSince();
+  if (!ch.length) return;
+  const headSha = st.commits[0].sha;
+  restoreSnap(st.head.snap, st.head.prompt);
+  promptEl.value = '';
+  st.restoredFrom = null;
+  st.commits.forEach((x) => { x.open = false; });
+  addCommit({ kind: 'reset', title: `You reset ${ch.length} unsent change${ch.length === 1 ? '' : 's'} back to ${headSha}`, changes: ch, files: [], open: true });
+  syncMirror(); renderWorking(); paintAllCommits();
+  toast(`Back to ${headSha}. The reset is recorded as its own commit, so the log stays append-only.`);
+}
+function commitWorking(text, ts, forRun) {
+  const ch = changesSince();
+  const files = workingFiles();
+  if (forRun) files.push({ name: 'ledger.jsonl', note: `+1 line · run ${pad(st.runNo)}` });
+  const version = text !== st.head.prompt ? st.head.version + 1 : st.head.version;
+  st.head = { prompt: text, version, yaml: toYaml(snapshot()), snap: snapshot() };
+  putFile('prompt.md', promptMd(text, version)); putFile('harness.yaml', st.head.yaml);
+  st.commits.forEach((x) => { if (x.open) { x.open = false; paintCommit(x); } });
+  const c = addCommit({ kind: kindOf(ch), title: titleOf(ch) + (forRun ? '' : ' (committed without running)'), changes: ch, files, ts, open: true });
+  st.restoredFrom = null;
+  return c;
+}
+
+/* ---------- repo window: Changes ---------- */
+function renderWorking() {
+  const wc = $('#wc'); wc.innerHTML = ''; wc.className = 'wc';
+  if (!st.head) return;
+  const c = previewCommit();
+  if (c) {
+    wc.classList.add('past');
+    const kept = changesSince().length;
+    wc.append(el('h3', null, `Previewing ${c.sha} (${c.n} of ${st.cseq})`), el('p', null, `Tabs, files and open windows show the state right after this commit. Use the slider, the ‹ › buttons or the arrow keys to move through history.${kept ? ` Your ${kept} unsent change${kept === 1 ? ' is' : 's are'} kept and come back when you return to latest.` : ''}`));
+    const row = el('div', 'row');
+    const r = el('button', 'btn sm tt', 'Restore this state'); r.type = 'button'; r.addEventListener('click', () => restore(c, false));
+    const back = el('button', 'btn sm primary', 'Back to latest'); back.type = 'button'; back.addEventListener('click', () => setTT(null));
+    row.append(r, back); wc.appendChild(row);
+    return;
+  }
+  const ch = changesSince();
+  wc.classList.toggle('dirty', ch.length > 0);
+  if (!ch.length) {
+    wc.append(el('h3', null, 'Nothing new since the last commit'), el('p', null, "Edit the prompt, a tab's model or effort, web search or MCP servers, or restore an earlier state, and the diff shows here before anything is recorded."));
+    return;
+  }
+  wc.appendChild(el('h3', null, `Not sent yet · ${ch.length} change${ch.length === 1 ? '' : 's'}${st.branch !== 'main' ? ` · on ${st.branch}` : ''}`));
+  const ul = el('ul', 'changes');
+  ch.forEach((x) => { const li = el('li'); const k = el('i', 'kind', GLYPH[x.k]); k.dataset.k = x.k; li.append(k, el('span', null, x.s)); ul.appendChild(li); });
+  wc.appendChild(ul);
+  workingFiles().forEach((f) => wc.appendChild(fileDiff(f)));
+  const row = el('div', 'row');
+  const reset = el('button', 'btn sm danger', 'Reset'); reset.type = 'button'; reset.title = `Undo these changes and go back to ${st.commits[0].sha}; recorded as a commit`;
+  reset.addEventListener('click', resetWorking);
+  const commit = el('button', 'btn sm', 'Commit without running'); commit.type = 'button'; commit.disabled = !!st.running;
+  commit.addEventListener('click', () => { const text = workingPrompt(); commitWorking(text, stamp(), false); promptEl.value = ''; syncMirror(); renderWorking(); refreshRepoViews(); });
+  row.append(reset, commit);
+  wc.appendChild(row);
+  wc.appendChild(el('p', null, 'Send commits these and runs every tab. Reset undoes them back to the last commit; the reset is logged too.'));
 }
 
 /* ---------- repo window: Files & artifacts ---------- */
-function artifacts() { return [...st.files.keys()].filter((p) => /artifacts\/.+\.html$/.test(p)); }
+function artifacts(files = filesNow()) { return [...files.keys()].filter((p) => /artifacts\/.+\.html$/.test(p)); }
+function labelFor(p) { const f = st.files.get(p); return (f && f.label) || p; }
 function renderFiles() {
+  const files = filesNow(), c = previewCommit();
   const fl = $('#flist'); fl.innerHTML = '';
-  const arts = artifacts();
+  const arts = artifacts(files);
   $('#artCount').textContent = String(arts.length);
-  fl.appendChild(el('div', 'sec', `Artifacts · ${arts.length}`));
+  fl.appendChild(el('div', 'sec', `Artifacts · ${arts.length}${c ? ` at ${c.sha}` : ''}`));
   if (!arts.length) fl.appendChild(el('div', 'note', 'Artifacts appear here when a tab returns code you can run, such as an HTML page.'));
   else {
     const g = el('div', 'arts');
     arts.forEach((p) => {
-      const parts = p.split('/'); const tab = parts[2] || '';
-      const b = el('button', 'art'); b.type = 'button'; b.setAttribute('aria-current', String(st.openFile === p));
-      b.append(el('span', null, st.files.get(p).label || `Run ${Number(parts[1])} · ${tab}`), el('small', null, `${parts[parts.length - 1]} · ${bytes(new Blob([st.files.get(p).content]).size)}`));
-      b.addEventListener('click', () => openFile(p));
-      g.appendChild(b);
+      const card = el('div', 'art'); card.setAttribute('aria-current', String(st.openFile === p));
+      const row = el('div', 'row');
+      const v = el('button', null, 'View here'); v.type = 'button'; v.addEventListener('click', () => { st.openFile = p; st.fileMode = 'preview'; renderFiles(); });
+      const w = el('button', null, 'Open in window'); w.type = 'button'; w.addEventListener('click', () => openFileWin(p));
+      row.append(v, w);
+      card.append(el('span', null, labelFor(p)), el('small', null, `${p.split('/').pop()} · ${bytes(new Blob([files.get(p).content]).size)}`), row);
+      g.appendChild(card);
     });
     fl.appendChild(g);
   }
-  fl.appendChild(el('div', 'sec', `All files at ${st.commits[0] ? st.commits[0].sha : 'HEAD'} · ${st.files.size}`));
-  const paths = [...st.files.keys()].sort((a, b) => { const da = a.includes('/'), db = b.includes('/'); return da === db ? a.localeCompare(b) : da ? 1 : -1; });
+  fl.appendChild(el('div', 'sec', `All files at ${c ? c.sha : (st.commits[0] ? st.commits[0].sha : 'HEAD')} · ${files.size}`));
+  const paths = [...files.keys()].sort((a, b) => { const da = a.includes('/'), db = b.includes('/'); return da === db ? a.localeCompare(b) : da ? 1 : -1; });
   const shown = new Set();
   paths.forEach((p) => {
     const parts = p.split('/');
@@ -860,36 +1094,63 @@ function renderFiles() {
       const d = parts.slice(0, i + 1).join('/');
       if (!shown.has(d)) { shown.add(d); const r = el('div', 'frow dir', parts[i] + '/'); r.style.paddingLeft = (12 + i * 12) + 'px'; fl.appendChild(r); }
     }
-    const f = st.files.get(p);
+    const f = files.get(p);
     const b = el('button', 'frow'); b.type = 'button'; b.style.paddingLeft = (12 + (parts.length - 1) * 12) + 'px'; b.setAttribute('aria-current', String(st.openFile === p));
     b.append(el('span', null, parts[parts.length - 1]), el('span', 'sz', f.kind === 'png' ? 'image' : bytes(new Blob([f.content]).size)));
-    b.addEventListener('click', () => openFile(p));
+    b.addEventListener('click', () => { st.openFile = p; st.fileMode = 'preview'; renderFiles(); });
+    b.addEventListener('dblclick', () => openFileWin(p));
     fl.appendChild(b);
   });
-  renderViewer();
-}
-function renderViewer() {
   const v = $('#viewer'); v.innerHTML = '';
-  const p = st.openFile, f = p && st.files.get(p);
-  if (!f) { v.appendChild(el('div', 'vempty', 'Pick an artifact or a file to view it here. HTML artifacts run in a sandbox inside this window.')); return; }
-  const head = el('div', 'vhead'); head.appendChild(el('span', 'path', p));
-  if (f.kind === 'html') {
+  renderFileInto(v, st.openFile, st.fileMode, (m) => { st.fileMode = m; renderFiles(); }, true);
+}
+function renderFileInto(box, p, mode, setMode, withWinBtn) {
+  const files = filesNow(), c = previewCommit();
+  const at = c ? c.sha : (st.commits[0] ? st.commits[0].sha : 'HEAD');
+  if (!p) { box.appendChild(el('div', 'vempty', 'Pick an artifact or a file to view it here, or open it in its own window to compare several side by side.')); return; }
+  const f = files.get(p);
+  const head = el('div', 'vhead'); head.append(el('span', 'path', p), el('span', 'at', `@ ${at}`));
+  if (f && f.kind === 'html') {
     const sg = el('span', 'seg');
-    ['preview', 'source'].forEach((m) => { const b = el('button', null, m === 'preview' ? 'Preview' : 'Source'); b.type = 'button'; b.setAttribute('aria-pressed', String(st.fileMode === m)); b.addEventListener('click', () => { st.fileMode = m; renderViewer(); }); sg.appendChild(b); });
+    ['preview', 'source'].forEach((m) => { const b = el('button', null, m === 'preview' ? 'Preview' : 'Source'); b.type = 'button'; b.setAttribute('aria-pressed', String(mode === m)); b.addEventListener('click', () => setMode(m)); sg.appendChild(b); });
     head.appendChild(sg);
   }
-  v.appendChild(head);
+  if (withWinBtn) { const w = el('button', 'win', 'Open in window'); w.type = 'button'; w.addEventListener('click', () => openFileWin(p)); head.appendChild(w); }
+  box.appendChild(head);
   const body = el('div', 'vbody');
-  if (f.kind === 'html' && st.fileMode === 'preview') {
+  if (!f) body.appendChild(el('div', 'vempty', `This file doesn't exist yet at ${at}. Move time travel forward to see it appear.`));
+  else if (f.kind === 'html' && mode === 'preview') {
     const fr = document.createElement('iframe');
     fr.setAttribute('sandbox', 'allow-scripts'); fr.setAttribute('title', `Preview of ${p}`); fr.srcdoc = f.content;
     body.appendChild(fr);
-  } else if (f.kind === 'png') {
-    body.appendChild(el('div', 'shot', 'screenshot.png: the harness captures the pane after each reply. Placeholder in this mockup.'));
-  } else body.appendChild(el('pre', null, f.content));
-  v.appendChild(body);
+  } else if (f.kind === 'png') body.appendChild(el('div', 'shot', 'screenshot.png: the harness captures the pane after each reply. Placeholder in this mockup.'));
+  else body.appendChild(el('pre', null, f.content));
+  box.appendChild(body);
 }
-function openFile(p) { st.openFile = p; st.fileMode = 'preview'; setRepoState('open'); setRview('files'); }
+
+/* ---------- file / artifact windows ---------- */
+const fileWins = [];
+function openFileWin(p) {
+  const ex = fileWins.find((w) => w.path === p);
+  if (ex) { setWinState(ex, 'open'); return; }
+  const body = el('div', 'fwbody');
+  const k = fileWins.length % 6;
+  const name = p.split('/').pop();
+  const label = labelFor(p) !== p ? `${labelFor(p)} · ${name}` : name;
+  const w = makeWin({ title: label, body, w: 430, h: 380, x: 36 + k * 30, y: 176 + k * 30 });
+  w.onClose = () => { destroyWin(w); fileWins.splice(fileWins.indexOf(w), 1); };
+  w.path = p; w.mode = 'preview'; w.body = body;
+  fileWins.push(w); renderFileWin(w);
+}
+function renderFileWin(w) {
+  const c = previewCommit(), f = filesNow().get(w.path);
+  const at = c ? c.sha : (st.commits[0] ? st.commits[0].sha : 'HEAD');
+  w.sub.textContent = c ? `@ ${c.sha}` : 'latest';
+  const key = `${w.mode}|${f ? f.kind + f.content.length : 'none'}`;
+  if (w.key === key) { const a = $('.at', w.body); if (a) a.textContent = `@ ${at}`; return; }
+  w.key = key; w.body.innerHTML = '';
+  renderFileInto(w.body, w.path, w.mode, (m) => { w.mode = m; renderFileWin(w); }, false);
+}
 
 /* ---------- repo window: Export & restore ---------- */
 function renderExport() {
@@ -897,30 +1158,31 @@ function renderExport() {
   const wrap = el('div', 'exp');
   const runs = st.exp ? st.exp.runs.length : 0;
   const stats = el('dl', 'stats');
-  [['Commits', st.commits.length], ['Runs', runs], ['Prompt versions', st.head ? st.head.version : 0], ['Branches', st.branches.length], ['Artifacts', artifacts().length], ['Spend', usd(st.spend)]].forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); stats.appendChild(d); });
+  [['Commits', st.commits.length], ['Runs', runs], ['Prompt versions', st.head ? st.head.version : 0], ['Branches', st.branches.length], ['Artifacts', artifacts(st.files).length], ['Spend', usd(st.spend)]].forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); stats.appendChild(d); });
   wrap.appendChild(stats);
   const card = (title, text, ...kids) => { const c = el('div', 'card'); c.appendChild(el('h4', null, title)); if (text) c.appendChild(el('p', null, text)); kids.forEach((k) => c.appendChild(k)); wrap.appendChild(c); return c; };
   const row = (...k) => { const r = el('div', 'row'); k.forEach((n) => r.appendChild(n)); return r; };
   const zipB = el('button', 'btn sm primary', 'Download repo as .zip'); zipB.type = 'button'; zipB.addEventListener('click', () => showPackage('zip'));
   const bunB = el('button', 'btn sm', 'Download git bundle'); bunB.type = 'button'; bunB.addEventListener('click', () => showPackage('bundle'));
-  card('Share a copy', 'The .zip holds the files plus the .git folder, so anyone can read it by hand or run git on it. The bundle is one file that holds every commit and branch; clone it like a remote.', row(zipB, bunB));
+  card('Share a copy', 'Exports always contain the full history, whatever point you are previewing. The .zip holds the files plus the .git folder; the bundle is one file with every commit and branch.', row(zipB, bunB));
   const remote = el('input'); remote.type = 'text'; remote.id = 'remoteUrl'; remote.placeholder = 'git@github.com:you/experiments.git'; remote.setAttribute('aria-label', 'Remote repository URL');
   const pushB = el('button', 'btn sm', 'Push'); pushB.type = 'button'; pushB.disabled = true; pushB.title = 'Available when the backend exists';
   card('Push to a remote', 'Pushes every branch so the history lives outside the server. Use a private repo with force-push blocked so it stays append-only.', row(remote, pushB));
   const file = el('input'); file.type = 'file'; file.id = 'restoreFile'; file.accept = '.zip,.bundle'; file.setAttribute('aria-label', 'Choose a .zip or .bundle to restore');
   file.addEventListener('change', () => { if (file.files[0]) toast(`${file.files[0].name}: restoring opens it as a new experiment with its full history, tabs and settings. This arrives with the backend.`); });
-  card('Restore a shared experiment', 'Open a .zip or .bundle someone sent you. It becomes a new experiment you can replay, branch or keep running.', file);
+  card('Restore a shared experiment', 'Open a .zip or .bundle someone sent you. It becomes a new experiment you can time-travel through, branch or keep running.', file);
   const tbl = el('table', 'tbl');
   tbl.innerHTML = '<thead><tr><th>Tab</th><th>Runs</th><th>Tokens</th><th>Cost</th><th>Artifacts</th></tr></thead>';
   const tb = el('tbody');
-  st.tabs.forEach((t) => {
-    const tok = t.runs.reduce((a, r) => a + r.tokOut + r.tokThinkCharged, 0);
-    const arts = t.runs.filter((r) => r.resp.art || r.resp.artifact).length;
-    const tr = el('tr'); [`${pad(t.id)} ${tabLabel(t)}${isFree(t) ? ' (free)' : ''}`, t.runs.length, Math.round(tok).toLocaleString(), usd(t.spent), arts].forEach((v) => tr.appendChild(el('td', null, String(v)))); tb.appendChild(tr);
+  st.tabs.concat(st.closed).forEach((t) => {
+    const done = t.runs.filter((r) => !r.skipped);
+    const tok = done.reduce((a, r) => a + r.tokOut + r.tokThinkCharged, 0);
+    const arts = done.filter((r) => r.resp.art).length;
+    const tr = el('tr'); [`${pad(t.id)} ${tabLabel(t)}${isFree(t) ? ' (free)' : ''}${st.closed.includes(t) ? ' (closed)' : ''}`, done.length, Math.round(tok).toLocaleString(), usd(t.spent), arts].forEach((v) => tr.appendChild(el('td', null, String(v)))); tb.appendChild(tr);
   });
   tbl.appendChild(tb);
-  const first = st.commits[st.commits.length - 1], last = st.commits.find((c) => c.snap);
-  const cmds = el('pre', 'cmds', `git log --oneline --stat\ngit diff ${first ? first.sha : '<a>'} ${last ? last.sha : '<b>'} -- prompt.md harness.yaml\ngit show HEAD:runs/${pad(Math.max(1, runs))}/01-*/response.md\ngit checkout -b retry ${last ? last.sha : '<sha>'}`);
+  const first = st.commits[st.commits.length - 1], last = st.commits[0];
+  const cmds = el('pre', 'cmds', `git log --oneline --stat\ngit diff ${first ? first.sha : '<a>'} ${last ? last.sha : '<b>'} -- prompt.md harness.yaml\ngit show HEAD:runs/${pad(Math.max(1, runs))}/01-*/response.md\ngit checkout ${first ? first.sha : '<sha>'} -- prompt.md harness.yaml   # restore = new commit`);
   card('Analyse', 'Per-tab totals for this experiment, and the git commands that answer most questions about it.', tbl, cmds);
   x.appendChild(wrap);
 }
@@ -933,10 +1195,8 @@ function showPackage(kind) {
     const paths = [...st.files.keys()].sort();
     const top = paths.filter((p) => !p.includes('/'));
     top.forEach((p) => L.push(`    ├── ${p}`));
-    L.push(`    └── runs/            ${st.exp.runs.length} runs · ${paths.length - top.length} files · ${artifacts().length} artifacts`);
-  } else {
-    L.push(`one file · ${st.commits.length} commits · branches: ${st.branches.join(', ')}`);
-  }
+    L.push(`    └── runs/            ${st.exp.runs.length} runs · ${paths.length - top.length} files · ${artifacts(st.files).length} artifacts`);
+  } else L.push(`one file · ${st.commits.length} commits · branches: ${st.branches.join(', ')}`);
   $('#sheetTitle').textContent = kind === 'zip' ? 'Repo as .zip' : 'Git bundle';
   $('#sheetIntro').textContent = kind === 'zip'
     ? 'In the PoC this downloads the experiment folder with its .git directory. Text files are Markdown; history is append-only. This viewer blocks downloads, so the contents are listed here.'
@@ -951,56 +1211,17 @@ $('#sheetClose').addEventListener('click', () => { $('#sheet').hidden = true; })
 $('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') e.target.hidden = true; });
 $('#sheetCopy').addEventListener('click', () => navigator.clipboard.writeText($('#sheetTree').textContent + '\n\n' + $('#sheetCmds').textContent).then(() => toast('Copied'), () => toast('Copy was blocked here. Select the text instead.')));
 
-/* ---------- repo window: tabs, drag, resize, minimize, close ---------- */
 function setRview(v) {
   st.rview = v;
-  document.querySelectorAll('.rtabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === v)));
+  repoBody.querySelectorAll('.rtabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === v)));
   $('#viewChanges').hidden = v !== 'changes'; $('#viewFiles').hidden = v !== 'files'; $('#viewExport').hidden = v !== 'export';
   if (v === 'files') renderFiles();
   if (v === 'export') renderExport();
 }
-document.querySelectorAll('.rtabs button').forEach((b) => b.addEventListener('click', () => setRview(b.dataset.view)));
-function setRepoState(s) {
-  st.repo = s;
-  repoEl.hidden = s !== 'open';
-  $('#repoBtn').setAttribute('aria-pressed', String(s === 'open'));
-  const dock = $('#dock'); dock.innerHTML = '';
-  if (s === 'min') {
-    const b = el('button'); b.type = 'button'; b.append(el('span', 'dot'), document.createTextNode(`Experiment repo · ${st.commits.length} commits`));
-    b.querySelector('.dot').style.background = 'var(--k-run)';
-    b.addEventListener('click', () => setRepoState('open'));
-    dock.appendChild(b);
-  }
-  dock.hidden = s !== 'min';
-}
-$('#repoClose').addEventListener('click', () => setRepoState('closed'));
-$('#repoMin').addEventListener('click', () => setRepoState('min'));
-$('#repoMax').addEventListener('click', () => repoEl.classList.toggle('max'));
-$('#repoBtn').addEventListener('click', () => setRepoState(st.repo === 'open' ? 'closed' : 'open'));
-$('#exportBtn').addEventListener('click', () => { setRepoState('open'); setRview('export'); });
-(() => {
-  const bar = $('#repoBar'), desk = $('#desktop');
-  let drag = null;
-  bar.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || repoEl.classList.contains('max') || window.innerWidth < 720) return;
-    const r = repoEl.getBoundingClientRect();
-    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-    bar.setPointerCapture(e.pointerId);
-  });
-  bar.addEventListener('pointermove', (e) => {
-    if (!drag) return;
-    const d = desk.getBoundingClientRect(), r = repoEl.getBoundingClientRect();
-    repoEl.style.left = Math.min(Math.max(0, e.clientX - d.left - drag.dx), d.width - r.width) + 'px';
-    repoEl.style.top = Math.min(Math.max(0, e.clientY - d.top - drag.dy), d.height - 36) + 'px';
-  });
-  bar.addEventListener('pointerup', () => { drag = null; });
-  bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) repoEl.classList.toggle('max'); });
-})();
-function placeRepo() {
-  const d = $('#desktop').getBoundingClientRect();
-  const w = Math.min(440, d.width - 40), h = Math.max(260, Math.min(580, d.height - 200));
-  Object.assign(repoEl.style, { width: w + 'px', height: h + 'px', left: Math.max(16, d.width - w - 34) + 'px', top: '172px' });
-}
+repoBody.querySelectorAll('.rtabs button').forEach((b) => b.addEventListener('click', () => setRview(b.dataset.view)));
+function refreshRepoViews() { if (st.rview === 'files') renderFiles(); else if (st.rview === 'export') renderExport(); $('#artCount').textContent = String(artifacts().length); }
+$('#repoBtn').addEventListener('click', () => setWinState(repoWin, repoWin.state === 'open' ? 'closed' : 'open'));
+$('#exportBtn').addEventListener('click', () => { setWinState(repoWin, 'open'); setRview('export'); });
 
 /* ---------- tabs and panes ---------- */
 function tabLabel(t) { return `${t.p.name} · ${t.model.label.split(' · ')[0]}`; }
@@ -1011,7 +1232,7 @@ function addTab(pid, modelId, reason) {
   if (st.tabs.length >= MAX_TABS) { toast('5 tabs is the limit. Close one to open another.'); return null; }
   const p = PROVIDERS[pid];
   const model = (modelId && p.models.find((m) => m.id === modelId)) || p.models[0];
-  const t = { id: ++st.seq, pid, p, model, reason: reason || (model.reason && model.reason.def) || null, web: false, status: 'idle', runs: [], trace: [], spent: 0, timer: null, cur: null };
+  const t = { id: ++st.tabSeq, pid, p, model, reason: reason || (model.reason && model.reason.def) || null, web: false, status: 'idle', runs: [], trace: [], spent: 0, timer: null, cur: null };
   buildPane(t);
   st.tabs.push(t);
   st.active = t.id;
@@ -1019,12 +1240,18 @@ function addTab(pid, modelId, reason) {
   refreshTab(t); layout(); syncMirror(); renderWorking();
   return t;
 }
-function closeTab(t) {
+function closeTab(t, quiet) {
   if (t.cur && t.cur.state === 'run') stopRun(t, 'closed');
   t.el.remove();
   st.tabs = st.tabs.filter((x) => x !== t);
+  if (!st.closed.includes(t)) st.closed.push(t);
   if (st.active === t.id) st.active = st.tabs.length ? st.tabs[st.tabs.length - 1].id : null;
-  layout(); syncMirror(); renderWorking();
+  if (!quiet) { layout(); syncMirror(); renderWorking(); }
+}
+function revive(t) {
+  st.closed = st.closed.filter((x) => x !== t);
+  st.tabs.push(t); st.tabs.sort((a, b) => a.id - b.id);
+  log(t, 'session', `Tab ${pad(t.id)} reopened by a restore`);
 }
 
 function buildPane(t) {
@@ -1056,9 +1283,15 @@ function buildPane(t) {
 }
 
 function buildControls(t) {
-  const sel = el('select', 'pick'); sel.id = `model-${t.id}`; sel.setAttribute('aria-label', `Tab ${pad(t.id)} model`);
+  const c = previewCommit();
+  const snapT = c && c.state.snap.tabs.find((x) => x.id === pad(t.id));
+  const model = snapT ? (t.p.models.find((m) => m.id === snapT.model) || t.model) : t.model;
+  const reason = snapT ? snapT.raw : t.reason;
+  const web = snapT ? snapT.web : t.web;
+  const ro = !!c;
+  const sel = el('select', 'pick'); sel.id = `model-${t.id}`; sel.setAttribute('aria-label', `Tab ${pad(t.id)} model`); sel.disabled = ro;
   t.p.models.forEach((m) => { const o = el('option', null, m.label); o.value = m.id; sel.appendChild(o); });
-  sel.value = t.model.id;
+  sel.value = model.id;
   sel.addEventListener('change', () => {
     const m = t.p.models.find((x) => x.id === sel.value);
     const keep = m.reason && m.reason.opts && m.reason.opts.includes(t.reason);
@@ -1071,63 +1304,67 @@ function buildControls(t) {
   t.r.ptitle = el('span', 'title'); t.r.ptop.appendChild(t.r.ptitle);
   if (t.runs.length) t.r.ptitle.textContent = t.runs[t.runs.length - 1].prompt;
   if (t.p.picker === 'composer') t.r.opts.appendChild(sel);
-  const r = t.model.reason;
+  const r = model.reason;
   if (r && r.fixed) t.r.opts.appendChild(el('span', 'fixed', `Reasoning: ${r.fixed}`));
   else if (r) {
-    const rs = el('select', 'pick'); rs.id = `reason-${t.id}`; rs.setAttribute('aria-label', `Tab ${pad(t.id)} ${r.label}`);
+    const rs = el('select', 'pick'); rs.id = `reason-${t.id}`; rs.setAttribute('aria-label', `Tab ${pad(t.id)} ${r.label}`); rs.disabled = ro;
     r.opts.forEach((o) => { const op = el('option', null, `${r.label}: ${o}`); op.value = o; rs.appendChild(op); });
-    rs.value = t.reason;
+    rs.value = reason;
     rs.addEventListener('change', () => { t.reason = rs.value; log(t, 'option', `${r.label} set to ${t.reason}`); renderWorking(); });
     t.r.opts.appendChild(rs);
   } else t.r.opts.appendChild(el('span', 'fixed', 'No thinking mode'));
   if (t.p.web) {
-    const b = el('button', 'pill', t.p.web); b.type = 'button'; b.id = `web-${t.id}`;
-    b.setAttribute('aria-pressed', String(t.web));
+    const b = el('button', 'pill', t.p.web); b.type = 'button'; b.id = `web-${t.id}`; b.disabled = ro;
+    b.setAttribute('aria-pressed', String(!!web));
     b.addEventListener('click', () => { t.web = !t.web; b.setAttribute('aria-pressed', String(t.web)); log(t, 'option', `${t.p.web} ${t.web ? 'on' : 'off'}`); renderWorking(); });
     t.r.opts.appendChild(b);
   }
-  t.r.mcpChip = el('span', 'mcpchip'); t.r.opts.appendChild(t.r.mcpChip);
-  paintMcpChip(t);
+  const mcp = c ? c.state.snap.mcp : [...st.mcp];
+  t.r.mcpChip = el('span', 'mcpchip', `MCP · ${mcp.join(', ')}`); t.r.mcpChip.hidden = !mcp.length; t.r.opts.appendChild(t.r.mcpChip);
   const send = el('span', 'senddot', '↑'); send.setAttribute('aria-hidden', 'true'); t.r.opts.appendChild(send);
 }
-function paintMcpChip(t) { const n = [...st.mcp]; t.r.mcpChip.hidden = !n.length; t.r.mcpChip.textContent = `MCP · ${n.join(', ')}`; }
 function paintBadge(t) {
   const b = t.r.badge;
-  if (isFree(t)) { b.hidden = false; b.className = 'badge free'; b.textContent = '$0 · not limited by the cap'; }
-  else if (capReached()) { b.hidden = false; b.className = 'badge paused'; b.textContent = 'paused by spend cap'; }
+  if (st.tt && st.closed.includes(t)) { b.hidden = false; b.className = 'badge past'; b.textContent = 'closed later'; }
+  else if (isFree(t)) { b.hidden = false; b.className = 'badge free'; b.textContent = '$0 · not limited by the cap'; }
+  else if (capReached() && !st.tt) { b.hidden = false; b.className = 'badge paused'; b.textContent = 'paused by spend cap'; }
   else b.hidden = true;
 }
-
-function refreshTab(t) {
-  t.el.dataset.status = t.status;
+function refreshTab(t, noTabs) {
+  t.el.dataset.status = viewStatus(t);
+  t.el.classList.toggle('ghost', !!st.tt && st.closed.includes(t));
   t.r.who.textContent = `${pad(t.id)} · ${tabLabel(t)}`;
   t.r.ep.textContent = t.model.host || t.p.endpoint;
-  if (!t.runs.length) {
-    t.r.greet.innerHTML = ''; t.r.greet.append(document.createTextNode(t.p.greet()));
-    if (t.pid === 'open') t.r.greet.appendChild(el('small', null, t.model.label));
-  }
-  paintBadge(t); paintStats(t); renderTabs();
+  t.r.greet.innerHTML = ''; t.r.greet.append(document.createTextNode(t.p.greet()));
+  if (t.pid === 'open') t.r.greet.appendChild(el('small', null, t.model.label));
+  applyThread(t);
+  paintBadge(t); paintStats(t);
+  if (!noTabs) renderTabs();
 }
 function paintStats(t) {
-  const words = { idle: 'Ready', run: t.cur && t.cur.phase === 'think' ? 'Thinking' : 'Responding', done: 'Done', stop: 'Stopped' };
-  t.r.st.textContent = words[t.status];
-  const tot = t.runs.reduce((a, x) => ({ i: a.i + x.tokIn, o: a.o + x.tokOut + x.tokThinkCharged }), { i: 0, o: 0 });
+  const s = viewStatus(t);
+  const words = { idle: 'Ready', run: t.cur && t.cur.phase === 'think' && !st.tt ? 'Thinking' : 'Responding', done: 'Done', stop: 'Stopped' };
+  t.r.st.textContent = words[s];
+  const S = st.tt || Infinity;
+  const runs = t.runs.filter((r) => (r.replySeq || Infinity) <= S || (!st.tt));
+  const tot = runs.reduce((a, x) => ({ i: a.i + x.tokIn, o: a.o + x.tokOut + x.tokThinkCharged, c: a.c + x.cost }), { i: 0, o: 0, c: 0 });
   t.r.tok.textContent = `${tot.i} in · ${Math.round(tot.o)} out`;
-  t.r.usd.textContent = isFree(t) ? '$0 (free)' : usd(t.spent);
-  const last = t.runs[t.runs.length - 1];
+  t.r.usd.textContent = isFree(t) ? '$0 (free)' : usd(st.tt ? tot.c : t.spent);
+  const last = runs[runs.length - 1];
   t.r.dur.textContent = last && last.t0 ? (((last.t1 || Date.now()) - last.t0) / 1000).toFixed(1) + 's' : '';
 }
 
 function renderTabs() {
   tabsEl.innerHTML = '';
   const words = { idle: 'ready', run: 'processing', done: 'finished', stop: 'stopped' };
-  st.tabs.forEach((t) => {
-    const v = el('div', 'vtab'); v.dataset.status = t.status; v.setAttribute('role', 'tab'); v.setAttribute('aria-selected', String(st.active === t.id));
-    const main = el('button', 'vtab-main'); main.type = 'button'; main.title = `${tabLabel(t)} · ${words[t.status]} · double-click to show only this tab`;
+  viewTabs().forEach((t) => {
+    const s = viewStatus(t), ghost = st.closed.includes(t);
+    const v = el('div', 'vtab' + (ghost ? ' ghost' : '')); v.dataset.status = s; v.setAttribute('role', 'tab'); v.setAttribute('aria-selected', String(st.active === t.id));
+    const main = el('button', 'vtab-main'); main.type = 'button'; main.title = `${tabLabel(t)} · ${words[s]}${ghost ? ' · closed later' : ''} · double-click to show only this tab`;
     main.append(el('span', 'dot'), el('span', 'fav', t.p.fav), el('span', 'lbl', `${pad(t.id)} ${tabLabel(t)}`));
     main.addEventListener('click', () => { st.active = t.id; layout(); if (st.view === 'split') t.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
     main.addEventListener('dblclick', () => { st.active = t.id; setView(st.view === 'one' ? 'split' : 'one'); });
-    const x = el('button', 'vtab-x', '×'); x.type = 'button'; x.setAttribute('aria-label', `Close tab ${pad(t.id)}`);
+    const x = el('button', 'vtab-x', '×'); x.type = 'button'; x.setAttribute('aria-label', `Close tab ${pad(t.id)}`); x.disabled = !!st.tt;
     x.addEventListener('click', () => closeTab(t));
     v.append(main, x); tabsEl.appendChild(v);
   });
@@ -1138,23 +1375,29 @@ function paintSendLabel() {
   const n = st.tabs.length, free = st.tabs.filter(isFree).length;
   const capped = capReached() && n > free;
   const k = capped ? free : n;
-  sendBtn.firstChild.textContent = `Send to ${k}${capped ? ' free' : ''} tab${k === 1 ? '' : 's'} `;
-  sendBtn.title = capped ? `${n - free} paid tab(s) are paused by the spend cap` : '';
+  sendBtn.firstChild.textContent = st.tt ? 'Previewing the past ' : `Send to ${k}${capped ? ' free' : ''} tab${k === 1 ? '' : 's'} `;
+  sendBtn.disabled = !!st.tt || st.running > 0;
+  sendBtn.title = st.tt ? 'Go back to latest to send' : capped ? `${n - free} paid tab(s) are paused by the spend cap` : '';
 }
 
 function layout() {
+  const vt = viewTabs();
+  st.closed.forEach((t) => { if (!vt.includes(t) && t.el.isConnected) t.el.remove(); });
+  const order = vt.map((t) => t.el);
+  const kids = [...panesEl.children].filter((e) => e.classList.contains('pane'));
+  if (order.some((e, i) => kids[i] !== e) || kids.length < order.length) order.forEach((e) => panesEl.appendChild(e));
+  st.tabs.forEach((t) => { if (!vt.includes(t)) t.el.hidden = true; });
   const W = panesEl.clientWidth || window.innerWidth;
   const one = st.view === 'one' || W < 640;
-  let shown = st.tabs;
-  if (one) shown = st.tabs.filter((t) => t.id === st.active).slice(0, 1);
-  if (one && !shown.length && st.tabs.length) { st.active = st.tabs[0].id; shown = [st.tabs[0]]; }
-  st.tabs.forEach((t) => { t.el.hidden = !shown.includes(t); });
+  let shown = vt;
+  if (one) { shown = vt.filter((t) => t.id === st.active).slice(0, 1); if (!shown.length && vt.length) { st.active = vt[0].id; shown = [vt[0]]; } }
+  vt.forEach((t) => { t.el.hidden = !shown.includes(t); });
   const cols = Math.max(1, Math.min(shown.length, Math.floor((W - 20 + 10) / (300 + 10))));
   const rows = Math.ceil(shown.length / cols) || 1;
   panesEl.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   panesEl.style.gridAutoRows = rows > 1 ? 'minmax(470px, 1fr)' : '1fr';
   let empty = $('.empty-panes', panesEl);
-  if (!st.tabs.length) { if (!empty) { empty = el('div', 'empty-panes'); empty.innerHTML = '<p>No tabs open.<br>Use <b>+ New tab</b> to add Claude, OpenAI, Gemini, Grok or an open model.</p>'; panesEl.appendChild(empty); } }
+  if (!vt.length) { if (!empty) { empty = el('div', 'empty-panes'); empty.innerHTML = '<p>No tabs open.<br>Use <b>+ New tab</b> to add Claude, OpenAI, Gemini, Grok or an open model.</p>'; panesEl.appendChild(empty); } }
   else if (empty) empty.remove();
   renderTabs();
 }
@@ -1198,7 +1441,7 @@ function openMcp(anchor) {
     b.addEventListener('click', () => {
       if (st.mcp.has(m.name)) st.mcp.delete(m.name); else st.mcp.add(m.name);
       b.setAttribute('aria-checked', String(st.mcp.has(m.name)));
-      st.tabs.forEach((x) => { paintMcpChip(x); log(x, 'mcp', `${m.name} ${st.mcp.has(m.name) ? 'attached' : 'detached'}`); });
+      st.tabs.forEach((x) => { buildControls(x); log(x, 'mcp', `${m.name} ${st.mcp.has(m.name) ? 'attached' : 'detached'}`); });
       $('#mcpCount').textContent = String(st.mcp.size); renderWorking();
     });
     pop.appendChild(b);
@@ -1209,19 +1452,24 @@ function openMcp(anchor) {
 $('#newTab').addEventListener('click', (e) => { e.stopPropagation(); if (pop && pop.dataset.for === 'new') closePop(); else openNewTab(e.currentTarget); });
 $('#mcpBtn').addEventListener('click', (e) => { e.stopPropagation(); if (pop && pop.dataset.for === 'mcp') closePop(); else openMcp(e.currentTarget); });
 document.addEventListener('click', (e) => { if (pop && !pop.contains(e.target)) closePop(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePop(); $('#sheet').hidden = true; } });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (pop) closePop(); else if (!$('#sheet').hidden) $('#sheet').hidden = true; else if (st.tt) setTT(null);
+});
 
 /* ---------- broadcast ---------- */
 function syncMirror() {
-  const v = promptEl.value;
-  st.tabs.forEach((t) => { t.r.mirror.textContent = v || t.p.placeholder; t.r.mirror.classList.toggle('ph', !v); t.r.mirror.classList.toggle('typing', !!v); });
+  const c = previewCommit();
+  const v = c ? c.state.prompt : promptEl.value;
+  viewTabs().forEach((t) => { t.r.mirror.textContent = v || t.p.placeholder; t.r.mirror.classList.toggle('ph', !v); t.r.mirror.classList.toggle('typing', !!v && !c); });
 }
-promptEl.addEventListener('input', () => { syncMirror(); renderWorking(); });
+promptEl.addEventListener('input', () => { if (st.tt) return; syncMirror(); renderWorking(); });
 promptEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
 $('#broadcast').addEventListener('submit', (e) => { e.preventDefault(); send(); });
 stopBtn.addEventListener('click', () => st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run') stopRun(t, 'user'); }));
 
 function send(text, instant = false) {
+  if (st.tt) { toast('You are previewing the past. Press Back to latest (or Esc) to send.'); return; }
   text = (text || workingPrompt()).trim();
   if (!text) { promptEl.focus(); toast('Type a prompt first.'); return; }
   if (st.running) { toast('Wait for this run to finish, or press Stop all.'); return; }
@@ -1229,28 +1477,22 @@ function send(text, instant = false) {
   const runnable = st.tabs.filter((t) => isFree(t) || !capReached());
   if (!runnable.length) { toast('The spend cap is reached and every open tab is paid. Raise the cap, or open a free tab (Open models · Ollama).'); return; }
   if (instant) promptEl.value = text;
-  const changes = changesSince();
   const ts = stamp();
-  if (!st.exp) { st.exp = { dir: `experiments/${ts.iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}-${slugify(text)}/`, runs: [] }; putFile('README.md', README(slugify(text))); }
+  if (!st.exp) st.exp = { dir: `experiments/${ts.iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}-${slugify(text)}/`, runs: [] };
   st.runNo++;
   const runDir = `runs/${pad(st.runNo)}/`;
-  if (changes.length) {
-    const files = workingFiles();
-    files.push({ name: 'ledger.jsonl', note: `+1 line · run ${pad(st.runNo)}` });
-    const version = text !== st.head.prompt ? st.head.version + 1 : st.head.version;
-    const c = addCommit({ kind: kindOf(changes), title: titleOf(changes), changes, files, ts, open: true, snap: snapshot(), prompt: text });
-    st.commits.forEach((x) => { if (x !== c && x.open) { x.open = false; paintCommit(x); } });
-    st.head = { prompt: text, version, yaml: toYaml(snapshot()), snap: snapshot() };
-    putFile('prompt.md', promptMd(text, version)); putFile('harness.yaml', st.head.yaml);
-  } else {
+  ledger({ event: 'run', run: st.runNo, prompt: text, models: st.tabs.map((t) => t.model.id) }, ts);
+  let userC;
+  if (changesSince().length) userC = commitWorking(text, ts, true);
+  else {
     const n = (st.takes[st.head.version] = (st.takes[st.head.version] || 1) + 1);
-    addCommit({ kind: 'rerun', title: `You re-ran prompt v${st.head.version} with no changes (take ${n})`, files: [], ts });
+    st.commits.forEach((x) => { if (x.open) { x.open = false; paintCommit(x); } });
+    userC = addCommit({ kind: 'rerun', title: `You re-ran prompt v${st.head.version} with no changes (take ${n})`, files: [{ name: 'ledger.jsonl', note: `+1 line · run ${pad(st.runNo)}` }], ts });
   }
-  const run = { no: st.runNo, dir: runDir, prompt: text, version: st.head.version, ts, tabs: [] };
+  const run = { no: st.runNo, dir: runDir, prompt: text, version: st.head.version, ts, tabs: [], userSeq: userC.n };
   st.exp.runs.push(run);
-  ledger({ event: 'run', run: st.runNo, prompt_version: run.version, prompt: text, models: st.tabs.map((t) => t.model.id) }, ts);
   promptEl.value = ''; syncMirror();
-  st.running += runnable.length; stopBtn.hidden = false; sendBtn.disabled = true;
+  st.running += runnable.length; stopBtn.hidden = false; paintSendLabel();
   st.tabs.forEach((t, i) => (runnable.includes(t) ? startRun(t, run, i + 1, instant) : skipRun(t, run)));
   renderWorking(); refreshRepoViews();
 }
@@ -1258,7 +1500,6 @@ function ledger(obj, ts = stamp()) {
   st.ledger.push(JSON.stringify({ unix: ts.unix, iso: ts.iso, human: ts.human, ...obj }));
   putFile('ledger.jsonl', st.ledger.join('\n'));
 }
-function refreshRepoViews() { if (st.rview === 'files') renderFiles(); if (st.rview === 'export') renderExport(); else $('#artCount').textContent = String(artifacts().length); }
 
 function makeReply(t, text) {
   const s = SAMPLE[text] && SAMPLE[text][t.pid];
@@ -1277,13 +1518,16 @@ function makeReply(t, text) {
 }
 
 function skipRun(t, run) {
-  t.r.greet.remove();
-  t.r.thread.append(el('div', 'rundiv', `Run ${run.no} · prompt v${run.version} · not sent`), el('div', 'msg-user', run.prompt),
-    el('div', 'notice', `Not sent: the spend cap ($${st.cap.toFixed(2)}) is reached and this tab costs money. Free tabs still ran. Raise the cap to include it.`));
-  t.r.thread.scrollTop = t.r.thread.scrollHeight;
-  t.status = 'stop'; t.cur = null; refreshTab(t);
+  const div = el('div', 'rundiv', `Run ${run.no} · prompt v${run.version} · not sent`), u = el('div', 'msg-user', run.prompt);
+  const note = el('div', 'notice', `Not sent: the spend cap ($${st.cap.toFixed(2)}) is reached and this tab costs money. Free tabs still ran. Raise the cap to include it.`);
+  div.dataset.seq = u.dataset.seq = run.userSeq;
+  t.r.thread.append(div, u, note);
   log(t, 'skipped', `Run ${run.no} not sent: spend cap reached`);
-  addCommit({ kind: 'stop', title: `${tabLabel(t)} skipped run ${run.no} · spend cap reached · nothing sent`, files: [] });
+  const c = addCommit({ kind: 'stop', title: `${tabLabel(t)} skipped run ${run.no} · spend cap reached · nothing sent`, files: [] });
+  note.dataset.seq = c.n;
+  t.runs.push({ skipped: true, run, prompt: run.prompt, userSeq: run.userSeq, replySeq: c.n, final: 'stop', tokIn: 0, tokOut: 0, tokThinkCharged: 0, cost: 0, resp: {} });
+  t.status = 'stop'; t.cur = null; refreshTab(t);
+  t.r.thread.scrollTop = t.r.thread.scrollHeight;
 }
 
 function startRun(t, run, idx, instant) {
@@ -1293,14 +1537,14 @@ function startRun(t, run, idx, instant) {
   const mcp = [...st.mcp];
   const r = { run, idx, prompt: run.prompt, t0: Date.now(), t1: 0, think, thinkMs: think ? jitter((m.think || 2000) * mult, h) : 0, resp, words: resp.md.match(/\S+\s*/g) || [], shown: 0,
     tokIn: estTok(run.prompt) + 38 + mcp.length * 220, tokOut: 0, tokThink: think ? Math.round(jitter((m.think || 2000) * mult, h >> 3) * 0.9) : 0, tokThinkCharged: 0, cost: 0, state: 'run', phase: think ? 'think' : 'text',
-    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/`, traceFrom: t.trace.length };
+    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/`, traceFrom: t.trace.length, userSeq: run.userSeq, replySeq: 0, final: null };
   run.tabs.push({ t, r });
   t.runs.push(r); t.cur = r;
-  t.r.greet.remove();
   t.r.ptitle.textContent = run.prompt;
   const div = el('div', 'rundiv', `Run ${run.no} · prompt v${run.version} · fresh context`);
   const u = el('div', 'msg-user', run.prompt);
   const ai = el('div', 'msg-ai');
+  div.dataset.seq = u.dataset.seq = run.userSeq; ai.dataset.seq = 'Infinity';
   r.el = { ai, body: el('div', 'body') };
   if (mcp.length) { const m0 = MCP_CATALOG.find((x) => x.name === mcp[0]); const tr = el('div', 'toolrow'); tr.innerHTML = `Called <b>${esc(m0.name)} › ${esc(m0.call)}</b> ${esc(m0.arg)}`; ai.appendChild(tr); }
   if (think) {
@@ -1316,7 +1560,7 @@ function startRun(t, run, idx, instant) {
   t.status = 'run'; refreshTab(t);
   log(t, 'request', `POST ${m.host || t.p.endpoint} · model ${m.id}${t.reason ? ` · ${m.reason.key || 'reasoning'} ${t.reason}` : ''}${t.web ? ' · web search' : ''}${mcp.length ? ` · MCP: ${mcp.join(', ')}` : ''}`);
   if (mcp.length) log(t, 'tool', `${mcp[0]} called by the model`);
-  r.commit = addCommit({ kind: 'pending', title: `${tabLabel(t)} is ${think ? 'thinking' : 'replying'}…`, files: [] });
+  r.pend = addPending(`${tabLabel(t)} is ${think ? 'thinking' : 'replying'}…`);
   charge(t, r, r.tokIn * m.in / 1e6);
   if (r.state !== 'run') return;
   if (instant) {
@@ -1343,7 +1587,7 @@ function endThinking(t, r) {
   charge(t, r, r.tokThink * t.model.out / 1e6);
   log(t, 'thinking', `${r.tokThink} thinking tokens · ${(r.thinkMs / 1000).toFixed(1)}s`);
   if (r.state !== 'run') return;
-  r.commit.title = `${tabLabel(t)} is replying…`; paintCommit(r.commit);
+  r.pend.set(`${tabLabel(t)} is replying…`);
   refreshTab(t); stream(t, r);
 }
 function stream(t, r) {
@@ -1358,8 +1602,8 @@ function stream(t, r) {
     const tok = (r.shown - before) * 1.33;
     r.tokOut += tok;
     r.el.body.innerHTML = renderMd(r.words.slice(0, r.shown).join(''));
-    t.r.thread.scrollTop = t.r.thread.scrollHeight;
-    if (++ticks % 8 === 0) { log(t, 'tokens', `out ${Math.round(r.tokOut)} · ${usd(r.cost)}`); r.commit.title = `${tabLabel(t)} is replying… ${Math.round(r.tokOut)} tokens`; paintCommit(r.commit); }
+    if (!st.tt) t.r.thread.scrollTop = t.r.thread.scrollHeight;
+    if (++ticks % 8 === 0) { log(t, 'tokens', `out ${Math.round(r.tokOut)} · ${usd(r.cost)}`); r.pend.set(`${tabLabel(t)} is replying… ${Math.round(r.tokOut)} tokens`); }
     charge(t, r, tok * m.out / 1e6);
     if (r.state === 'run' && r.shown >= r.words.length) { clearInterval(t.timer); r.t1 = Date.now(); finishRun(t, r); }
     else paintStats(t);
@@ -1383,7 +1627,7 @@ function finishRun(t, r) {
   if (r.resp.art) {
     const ap = r.dir + 'artifacts/artifact-01.html', size = new Blob([r.resp.art]).size;
     putFile(ap, r.resp.art); st.files.get(ap).label = `Run ${r.run.no} · ${tabLabel(t)}`;
-    const a = el('div', 'artifact'); const pv = el('button', null, 'Preview'); pv.type = 'button'; pv.addEventListener('click', () => openFile(ap));
+    const a = el('div', 'artifact'); const pv = el('button', null, 'Open in window'); pv.type = 'button'; pv.addEventListener('click', () => openFileWin(ap));
     a.append(el('b', null, 'artifact-01.html'), el('span', 'meta', `HTML · ${bytes(size)} · saved to repo`), pv);
     r.el.ai.appendChild(a);
     files.push({ name: ap, note: `new file · ${bytes(size)}` });
@@ -1393,16 +1637,17 @@ function finishRun(t, r) {
   copy.addEventListener('click', () => navigator.clipboard.writeText(r.resp.md).then(() => toast('Reply copied'), () => toast('Copy was blocked here. Select the text instead.')));
   tools.append(copy, el('span', null, `${Math.round(r.tokOut)} tokens · ${isFree(t) ? '$0 (free)' : usd(r.cost)}`));
   r.el.ai.appendChild(tools);
-  t.status = 'done'; refreshTab(t);
   log(t, 'done', `${Math.round(r.tokOut)} output tokens · ${usd(r.cost)}`);
   log(t, 'screenshot', 'Saved screenshot.png of this pane');
   const traceLines = t.trace.slice(r.traceFrom).map((e) => JSON.stringify({ iso: new Date(e.t).toISOString(), type: e.type, detail: e.detail })).join('\n');
   putFile(r.dir + 'trace.jsonl', traceLines); putFile(r.dir + 'screenshot.png', '', 'png');
   files.push({ name: r.dir + 'trace.jsonl', note: `new file · ${t.trace.length - r.traceFrom} events` }, { name: r.dir + 'screenshot.png', note: 'new file · image' });
   ledger({ event: 'reply', run: r.run.no, tab: pad(t.id), model: t.model.id, tokens: Math.round(r.tokOut + r.tokThink), cost_usd: +r.cost.toFixed(5), outputs: files.map((f) => f.name) });
-  Object.assign(r.commit, { kind: 'run', title: `${tabLabel(t)} replied · ${Math.round(r.tokOut + r.tokThink)} tokens · ${isFree(t) ? '$0' : usd(r.cost)} · ${((r.t1 - r.t0) / 1000).toFixed(1)}s${r.resp.art ? ' · 1 artifact' : ''}`, files, ts: stamp() });
-  paintCommit(r.commit);
-  log(t, 'commit', `${r.commit.sha} ${r.dir}`);
+  r.pend.li.remove();
+  const c = addCommit({ kind: 'run', title: `${tabLabel(t)} replied to run ${r.run.no} · ${Math.round(r.tokOut + r.tokThink)} tokens · ${isFree(t) ? '$0' : usd(r.cost)} · ${((r.t1 - r.t0) / 1000).toFixed(1)}s${r.resp.art ? ' · 1 artifact' : ''}`, files });
+  r.replySeq = c.n; r.final = 'done'; r.el.ai.dataset.seq = String(c.n);
+  log(t, 'commit', `${c.sha} ${r.dir}`);
+  t.status = 'done'; refreshTab(t);
   endOne();
 }
 function stopRun(t, why) {
@@ -1413,17 +1658,18 @@ function stopRun(t, why) {
   if (r.el.thought && r.phase === 'think') { r.el.thought.classList.remove('live'); r.el.thought.textContent = 'Thinking stopped'; }
   const reason = { cap: `Stopped by the spend cap (${usd(st.spend)} of ${usd(st.cap)}). The partial reply was saved. Free tabs keep running.`, user: 'Stopped from the harness. The partial reply was saved.', closed: 'Tab closed while replying. The partial reply was saved.' }[why];
   r.el.ai.appendChild(el('div', 'notice', reason));
-  t.status = 'stop'; refreshTab(t);
   log(t, 'stopped', reason);
   const partial = r.words.slice(0, r.shown).join('') || '(no text yet)';
   putFile(r.dir + 'response.md', partial);
-  Object.assign(r.commit, { kind: 'stop', title: `${tabLabel(t)} stopped (${why === 'cap' ? 'spend cap' : why}) · partial reply saved`, files: [{ name: r.dir + 'response.md', before: null, after: partial }], ts: stamp() });
-  paintCommit(r.commit);
+  r.pend.li.remove();
+  const c = addCommit({ kind: 'stop', title: `${tabLabel(t)} stopped on run ${r.run.no} (${why === 'cap' ? 'spend cap' : why}) · partial reply saved`, files: [{ name: r.dir + 'response.md', before: null, after: partial }] });
+  r.replySeq = c.n; r.final = 'stop'; r.el.ai.dataset.seq = String(c.n);
+  t.status = 'stop'; refreshTab(t);
   endOne();
 }
 function endOne() {
   st.running = Math.max(0, st.running - 1);
-  if (!st.running) { stopBtn.hidden = true; sendBtn.disabled = false; refreshRepoViews(); }
+  if (!st.running) { stopBtn.hidden = true; paintSendLabel(); refreshRepoViews(); renderWorking(); }
 }
 function trip() { st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run' && !isFree(t)) stopRun(t, 'cap'); }); }
 function paintBudget() {
@@ -1463,26 +1709,24 @@ function renderTrace(t) {
 function tick() { $('#clock').textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 tick(); setInterval(tick, 20000);
 
-/* ---------- opening state: three runs that show each kind of change and the artifacts ---------- */
+/* ---------- opening state: three runs that show each kind of change and four artifacts ---------- */
 addTab('anthropic', 'claude-opus-5-5', 'medium');
 addTab('openai', 'gpt-5', 'medium');
 addTab('gemini', 'gemini-2.5-pro', 'dynamic');
-st.head = { prompt: '', version: 0, yaml: '', snap: { cap: st.cap, tabs: [], mcp: [] } };
 const y0 = toYaml(snapshot());
-putFile('harness.yaml', y0);
-addCommit({ kind: 'init', title: 'You started the experiment with 3 tabs', files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }], snap: snapshot(), prompt: '' });
 st.head = { prompt: '', version: 0, yaml: y0, snap: snapshot() };
+putFile('harness.yaml', y0); putFile('README.md', README('pass-k-vs-pass-hat-k'));
+addCommit({ kind: 'init', title: 'You started the experiment with 3 tabs', files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }] });
 send(V1, true);
 st.tabs[0].reason = 'high'; buildControls(st.tabs[0]);
-st.mcp.add('filesystem'); st.tabs.forEach(paintMcpChip); $('#mcpCount').textContent = '1';
+st.mcp.add('filesystem'); st.tabs.forEach((t) => buildControls(t)); $('#mcpCount').textContent = '1';
 send(V2, true);
 addTab('open', 'qwen3:8b');
 send(V3, true);
 st.active = st.tabs[0].id;
 st.openFile = artifacts()[0] || null;
-paintBudget(); syncMirror(); renderWorking(); layout();
-placeRepo();
-setRepoState(window.innerWidth < 1000 ? 'closed' : 'open');
+paintBudget(); syncMirror(); renderWorking(); layout(); paintTT();
+setWinState(repoWin, window.innerWidth < 1000 ? 'closed' : 'open');
 setRview('changes');
 })();
 </script>

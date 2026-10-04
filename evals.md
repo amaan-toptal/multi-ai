@@ -323,3 +323,41 @@
 - **L-24 Inline artifacts run model-written scripts.** The frame has `allow-scripts` without same-origin, so it can't touch
   the harness's storage or keys, but it can still make network requests; the backend should serve artifacts from a separate
   origin with a strict CSP.
+
+---
+
+## 2026-10-04 — session 1, part 8 (prompt 0013) — time travel, reset, movable windows
+
+### Decisions taken without asking
+- **D-54 One generic window manager** for the repo window and any number of file windows: drag by the title bar, clamp so at
+  least 80 px stays on screen, CSS resize, maximize, minimize to the dock, focus brings to front. Dragging now works at every
+  width (it was disabled under 720 px, which is likely why the owner could not move it in a narrow panel).
+- **D-55 Each commit stores a full snapshot** (settings, prompt, every file). Fine for a mockup; the backend reads these from
+  git instead (`git show <sha>:path`).
+- **D-56 Clicking a commit both previews and expands it**; clicking the selected one again only collapses it. The slider,
+  ‹ › and arrow keys step one commit at a time and keep the selected commit scrolled into view.
+- **D-57 Tabs closed later are kept, not destroyed**, so time travel can show them (dashed) and a restore revives the same
+  tab with its full thread instead of creating a new one.
+- **D-58 Restore stages, then Commit or Send records.** The owner asked for "checkout plus adding its diff"; staging first
+  lets you review the diff, and the resulting commit is labelled ↶ restore. Commit without running records it with no API
+  calls.
+- **D-59 Reset is an empty commit** (⟲) with the discarded changes listed, rather than a silent discard, to keep the
+  activity log append-only as asked.
+- **D-60 In-flight replies are no longer commits.** They appear in a "running" list and become a commit when the reply ends,
+  so history order equals completion order.
+- **D-61 File windows don't reload when stepping through time** unless their content changes; only the "@ sha" label updates,
+  so artifacts keep their state while you scrub.
+
+### Evaluations performed
+- **E-15 Headless Chromium run:** dragging the repo window moves it (to the top edge of the screen on desktop, 300 px down
+  on a 400 px phone); two artifact windows open beside the repo window; moving the slider to commit 6 of 14 hides tab 04,
+  shows tabs 01–03 yellow (their replies to prompt v2 were still in flight), puts prompt v2 in the read-only prompt bar and
+  shows "doesn't exist yet" in all artifact views; Restore stages 3 changes (restore, prompt edit, closing tab 04) with word
+  diffs; Reset returns tab 04 and adds "You reset 3 unsent changes back to <sha>"; 400 px dark has no horizontal scroll;
+  no page errors.
+
+### Loopholes / risks
+- **L-25 Snapshots per commit grow with history** (every file copied). Fine for a demo, not for real experiments; the backend
+  must read past states from git objects.
+- **L-26 A restore that reopens a tab revives its old thread** (useful for comparison) but the restored tab's next run is still
+  a fresh context; the UI says "fresh context" on every run to avoid confusion.

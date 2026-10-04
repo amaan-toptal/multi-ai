@@ -236,3 +236,30 @@ Keys go in the server's `.env` (never committed): `ANTHROPIC_API_KEY`, `OPENAI_A
 - Repo contents are now concrete files: `README.md`, `harness.yaml`, `prompt.md`, `ledger.jsonl` (one JSON line per run and
   reply with unix/ISO/human time), and per run and tab `response.md`, `thinking.md`, `trace.jsonl`, `screenshot.png`,
   `artifacts/artifact-01.html`.
+
+---
+
+## v0.5 — 2026-10-04 — time travel across the whole UI, reset, movable windows (prompt 0013)
+
+### Change to the plan
+- **Layout:** the prompt bar is the browser's top row; the variant tabs sit below it.
+- **Floating windows move anywhere on the screen** (over the menu bar, browser and desktop), at any width, and can be
+  resized, maximized, minimized to the dock or closed. Besides the repo window, **any file or artifact can open in its own
+  window**, as many as you like, to compare side by side.
+- **Time travel.** Every commit stores a full snapshot: harness settings, prompt, and the file tree. A time-travel bar in the
+  repo window (slider, ‹ ›, arrow keys; clicking a commit does the same) moves a cursor through history. While the cursor is
+  in the past, everything shows the state right after that commit:
+  - tabs that existed then (tabs closed later reappear dashed; tabs opened later are hidden), each with the model and
+    effort it had, and its status at that moment (yellow if its reply had not landed yet);
+  - each pane's thread up to that commit; the prompt bar and composers show that commit's prompt (read only);
+  - the Files view and every open file window show the files as of that commit, or say the file doesn't exist yet.
+  A banner offers **Restore this state**, **Branch from here** and **Back to latest**. Unsent work is kept and returns
+  when you go back to latest. Nothing changes until you restore.
+- **Restore = checkout + new commit, never a rewrite.** Restore stages the earlier prompt and settings as unsent changes
+  (like `git checkout <sha> -- prompt.md harness.yaml`), listed first as "You restored the state from <sha>". They are
+  recorded by **Commit without running** or **Send**, both of which add a new commit on top.
+- **Reset** (in the Changes view) undoes whatever is staged and returns the tabs, settings and prompt to the last commit.
+  It is recorded as an empty commit that lists the discarded changes, so the log stays an append-only record of every
+  user action.
+- Reply commits are created when a reply finishes (in-flight replies show in a separate "running" list), so commit order
+  matches what time travel replays.
