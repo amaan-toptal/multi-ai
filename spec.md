@@ -106,3 +106,66 @@ free-form vs fixed template. Games: fun game < 2 KB, puzzle game < 3 KB, action 
 {"unix":1791127835,"iso":"2026-10-04T15:30:35.128Z","human":"Sun, 04 Oct 2026 15:30:35 UTC",
  "event":"prompt|variant|debate|config","run":"<run-id>","variant":"v1","prompt":"...","models":["claude-opus-5-5"],"outputs":["runs/.../response.md"]}
 ```
+
+---
+
+## v0.2 — 2026-10-04 — PoC direction: the variant windows harness (prompts 0005–0010)
+
+### Change to the plan
+The v0.1 scripted playground is frozen on branch `prototype/v0.1-scripted-playground`. Work continues on `poc/variant-windows`
+(same commits as `claude/cool-hawking-d5q52e`), starting from a front-end mockup only; the owner asked for no backend work yet.
+
+### What the PoC should be (from the owner, mocked in `docs/mockup/index.html`)
+- **A remote-desktop view** (macOS or Ubuntu look) with **1–5 variant windows** side by side. Each window looks like a browser
+  showing one provider's chat page: Claude, ChatGPT, Gemini, Grok, or an open-source model behind a local UI. Any mix is
+  allowed (e.g. Haiku + Opus + Fable, or Fable + ChatGPT + Gemini). Browser chrome opens (+) and closes (×) windows,
+  minimises them, or shows one window alone.
+- **One prompt bar above all windows.** Typing mirrors into every window's composer; Enter sends to all at once.
+- **Status colour per window:** yellow while processing, green when finished, red when stopped.
+- **Each window's own options are visible as that site shows them** (model picker, thinking/search/research toggles).
+- **Thinking is shown the way each site shows it:** a collapsed "Thought for Ns" line that expands. Everything is captured.
+- **Trace drawer per window:** every event and token count, searchable.
+- **Project spend cap** in the menu bar. Reaching it stops running windows; partial output is committed.
+- **Experiment repo window** (floating, draggable) that updates live: one commit for the prompt, one per window as it
+  finishes, one when the turn is complete.
+- **Export package** per experiment, timestamped, readable by hand, and itself an append-only git repo that can later be
+  forked, branched or restored into the harness:
+  ```
+  experiments/<YYYYMMDDTHHMMSSZ>-<slug>/
+    README.md  prompt.md  manifest.json  ledger.jsonl  git-log.md
+    variants/NN-<provider>-<model>/
+      response.md  thinking.md  trace.jsonl  screenshot.png  artifacts/…
+    turns/NN/…                      (later turns)
+  ```
+  Every human-readable text file is Markdown (owner, prompt 0010); machine files stay JSON / JSON Lines.
+
+### Open decision: how a window gets its content (owner to choose before the backend starts)
+| Route | How | For | Against |
+|---|---|---|---|
+| A. Real provider web UIs | Playwright opens one isolated browser profile per window, the owner signs in, the harness types the prompt and streams the screen (noVNC or CDP screencast) | Looks and behaves exactly like the sites; uses existing subscriptions | Automating consumer chat sites is likely against their terms and can get accounts flagged; breaks when the sites change; logins, 2FA and captchas; no token counts, so the spend cap can't work |
+| B. Provider APIs in provider-styled windows | Each window calls the provider's API with the owner's key and renders the reply in a page styled like that provider; Playwright only takes the screenshot | Reliable, metered (cap works), every reasoning control exposed, allowed by the API terms | Looks like the sites, isn't them; needs an API key per provider |
+
+Recommendation: **B**, with A kept as an experiment for a provider whose terms allow it.
+
+### Reasoning ("thinking") controls by provider, API side (verify against each provider's docs at build time)
+| Provider / models | Control | What the UI can show |
+|---|---|---|
+| Anthropic Opus 5.5, Sonnet 5.5, Fable 5.1, Opus 5 | Adaptive thinking + `effort` low · medium · high · xhigh · max | Summarized thinking |
+| Anthropic Haiku 4.5 | `budget_tokens` | Summarized thinking |
+| OpenAI GPT-5 family | `reasoning.effort` minimal · low · medium · high | Optional reasoning summary; raw reasoning hidden; reasoning tokens billed as output |
+| Google Gemini 2.5 Flash / Pro | `thinkingBudget` in tokens (Flash 0–24,576, Pro 128–32,768, −1 = dynamic) | Thought summaries when requested |
+| Google Gemini 3 | `thinking_level` low · high | Thought summaries when requested |
+| xAI Grok 4 | Always reasons, not configurable | Reasoning not returned |
+| xAI grok-3-mini | `reasoning_effort` low · high | Reasoning content returned |
+| DeepSeek-R1 (open weights) | Always thinks | Raw thinking text |
+| Qwen3 (open weights) | Thinking on/off | Raw thinking text |
+| gpt-oss (open weights) | Reasoning low · medium · high | Raw reasoning text |
+| Llama 4, Kimi K2 (open weights) | No thinking mode | — |
+
+Summaries and raw thinking are not comparable one to one; the export labels which kind each window produced.
+
+### Later (kept in mind, not built)
+- Meta-agent that reads all windows and summarises what each did.
+- Criteria checks: objective tests (RLVR-style pass/fail), subjective scores (RLHF-style), or both; a critic model that
+  refines answers toward stated or implied criteria.
+- pass@k and pass^k per window across k takes (pass@k = any of k passes; pass^k = all k pass).

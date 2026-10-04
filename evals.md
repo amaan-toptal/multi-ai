@@ -193,3 +193,52 @@
 - **L-15 The time-travel hour is scripted,** including the debates. The real app records timestamps and a ledger today
   but has no debate runs and no replay UI yet (spec v0.1.2 lists both).
 - **L-16 Prompt diffs are word-level LCS,** good for short prompts; long prompts will need a line-aware diff.
+
+---
+
+## 2026-10-04 — session 1, part 5 (prompts 0005–0010) — variant windows mockup
+
+### Decisions taken without asking
+- **D-31 Branch names:** `prototype/v0.1-scripted-playground` (frozen v0.1 at `0564016`) and `poc/variant-windows`. The poc branch
+  points at the same commits as the designated `claude/cool-hawking-d5q52e`, so both stay in sync.
+- **D-32 Seeded examples are not stripped from the poc branch yet.** The owner asked for no backend work until the mockup is
+  right (prompt 0010); removing `server/examples.js` seeds belongs with the backend change.
+- **D-33 The mockup lives at `docs/mockup/index.html`** and is published to the same artifact link as the previous desktop mockup
+  (https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx).
+- **D-34 Provider pages are approximations, not copies:** layout conventions (where the model picker sits, composer shape,
+  greeting, "Thought for Ns" line) without logos or brand assets, and a footer saying they aren't affiliated. No sign-in
+  forms; each window shows "Profile NN · isolated" instead, because a page that collects credentials under a provider's look
+  is off limits.
+- **D-35 Model lists and non-Anthropic prices in the mockup are placeholders.** Claude prices match `server/providers/anthropic.js`.
+- **D-36 Spend cap defaults to $0.30 in the mockup** so a few turns trip it and the stop behaviour is visible.
+- **D-37 Export layout:** every human-readable file is `.md` (owner rule); `manifest.json`, `ledger.jsonl`, `trace.jsonl` stay
+  machine formats; one `screenshot.png` per window.
+- **D-38 Narrow screens (< 720 px) show one window at a time**, switched from the window strip; wide screens tile up to 5.
+- **D-39 Recommended route B (provider APIs in provider-styled windows) over route A (driving real sites with Playwright)**;
+  recorded in spec v0.2 as an open decision for the owner.
+
+### Bugs found
+- **B-11** Replies earlier in this session (served by Haiku 4.5) named outdated models (Claude 3.5 Opus/Sonnet/Haiku, GPT-4o,
+  o1-preview, Gemini 2.0, Grok 3) and wrong thinking options. Corrected in the mockup and in spec v0.2's table.
+- **B-12** The previous desktop mockup hid its model sidebar below 900 px and squeezed the prompt into the top bar, so in the chat
+  side panel the owner saw no prompt box, sidebar or run button. It also used `alert()`, which the artifact viewer blocks.
+  Replaced: the prompt bar is a full-width row that is always visible; windows are added from the strip or a window's `+`.
+- **B-13** The "turn complete" commit fired after the first window of the instant opening turn, because the running counter was
+  incremented per window as it started. Now set once per turn before any window starts.
+- **B-14** Redrawing the window strip on every streaming tick could swallow a click on a chip. Ticks now repaint only the
+  window's status bar.
+- **B-15** At 400 px the menu bar overflowed (page 512 px wide), and a default form margin left a gap under the prompt bar in the
+  local file. Fixed.
+
+### Evaluations performed
+- **E-11 Headless Chromium run of `docs/mockup/index.html`:** opens with 3 finished (green) windows and 6 commits; adding Grok and
+  sending a prompt turns all 4 chips and windows yellow within 2.6 s and green after about 11 s; repo window shows pending then
+  committed rows with file paths; export sheet lists the package tree and `prompt.md`; 400 px dark mode has no horizontal
+  scroll; no page errors (only Google Fonts blocked by the sandbox). Screenshots reviewed.
+
+### Loopholes / risks
+- **L-17 Route A (automating consumer chat sites)** is likely against those sites' terms, can get accounts flagged, breaks when
+  their pages change, and runs into logins, 2FA and captchas.
+- **L-18 Thinking is not comparable across providers:** some return summaries, open-weight models return raw text, Grok 4 returns
+  none. Exports must label which kind each window has.
+- **L-19 The spend cap only works where usage is metered** (APIs). Subscription web UIs expose no token counts.

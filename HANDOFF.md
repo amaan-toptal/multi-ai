@@ -121,3 +121,33 @@ Repo: `npm test`; `npm start`, run anything, then `cat data/workspaces/default/l
 1. Real debate runs (spec v0.1.2) and a real replay view over `ledger.jsonl` + git history.
 2. Extend the append-only CI verifier (still TODO) to cover `ledger.jsonl`.
 3. Unchanged: real-API smoke test, per-variant repos, block force pushes (owner TODO).
+
+---
+
+## Session 1, part 5 — 2026-10-04 — prototype branch, poc branch, variant windows mockup (model: Opus 5.5 for prompt 0010)
+
+**Prompts:** [0005](prompts/0005-2026-10-04-prototype-and-poc-branches.md) ·
+[0006](prompts/0006-2026-10-04-variant-tabs-ui.md) · [0007](prompts/0007-2026-10-04-variant-tabs-answers.md) ·
+[0008](prompts/0008-2026-10-04-desktop-browser-windows.md) · [0009](prompts/0009-2026-10-04-path-a-mockup.md) ·
+[0010](prompts/0010-2026-10-04-mockup-feedback.md)
+
+### What changed
+- `prototype/v0.1-scripted-playground` holds v0.1 exactly as it was (commit `0564016`).
+- `poc/variant-windows` created from this session's commit; it is where the PoC continues.
+- New `docs/mockup/index.html`: remote-desktop mockup (macOS / Ubuntu switch) with 1–5 browser windows for Claude, ChatGPT,
+  Gemini, Grok and open-source models (Open WebUI); one prompt bar that types into every window; yellow / green / red status;
+  per-window model and option controls; collapsed "Thought for Ns"; searchable Trace drawer; spend cap; floating live repo
+  window; export sheet showing the package layout (Markdown files). Replies are simulated.
+- Artifact (same link as the last mockup): https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx
+- spec v0.2 (PoC plan, route A vs B, reasoning controls by provider), evals D-31…D-39, B-11…B-15, E-11, L-17…L-19.
+
+### How to verify
+Open the artifact. Type in the prompt bar and watch the text appear in every window's composer; press Enter. Use `+ New window`
+or a window's `+` to add Grok or Open WebUI, `×` to close, the strip chips to show one window, `Trace` to search events,
+`Export package` to see the zip layout. Set the cap to 0.15 and send twice to see the stop. Locally: open
+`docs/mockup/index.html` in a browser.
+
+### Next steps
+1. Owner reviews the mockup and decides route A or B (spec v0.2).
+2. Then backend on `poc/variant-windows`: strip seeded examples, real windows (one provider first), export zip, repo per experiment.
+3. Unchanged: real-API smoke test, append-only CI verifier, block force pushes (owner TODO).
