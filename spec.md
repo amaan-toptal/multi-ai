@@ -169,3 +169,47 @@ Summaries and raw thinking are not comparable one to one; the export labels whic
 - Criteria checks: objective tests (RLVR-style pass/fail), subjective scores (RLHF-style), or both; a critic model that
   refines answers toward stated or implied criteria.
 - pass@k and pass^k per window across k takes (pass@k = any of k passes; pass^k = all k pass).
+
+---
+
+## v0.3 — 2026-10-04 — decision: provider APIs; variant tabs; repo as a diff of user changes (prompt 0011)
+
+### Decisions from the owner
+- **Route B: tabs call provider APIs / SDKs** (closes the open decision in v0.2). Pages stay styled after each provider's chat
+  layout; the pane header shows the real endpoint.
+- **Windows and tabs merge into one concept, the variant tab.** One browser, one tab strip; tabs show side by side or one at a
+  time; × closes, + New tab opens (max 5). Tab colour = status (yellow processing, green finished, red stopped).
+- **The repo view is a git diff of what the user did.** The harness state is two files, `prompt.md` and `harness.yaml`
+  (tabs → api, model, effort/thinking setting, web search; `mcp_servers`; `spend_cap_usd`). Every user change shows first as
+  "Not sent yet" with a live diff; Send commits it as one commit, typed and coloured by kind (P prompt, C model/effort/tabs,
+  T tool, M MCP server). Each tab's reply is then its own commit (R) adding `runs/NN/<tab>/response.md`, `thinking.md`,
+  `trace.jsonl`, `screenshot.png`, `artifacts/`. Re-sending with no change is an empty "take" commit (input for pass@k).
+- **Each Send is a fresh-context run** of every tab (not a chat continuation), so runs compare prompt and config versions.
+
+### Harness surfaces compared (why API first)
+| | Web UI (claude.ai, chatgpt.com, …) | API / SDK (this PoC) | CLI / agent harness (Claude Code, Codex CLI, Gemini CLI, Agent SDK) |
+|---|---|---|---|
+| What you control | Almost nothing: hidden system prompt, product features, model updates without notice | System prompt, model version, effort/thinking, tools, output schema, sampling count | The whole agent loop: files, shell, MCP, hooks, sub-agents; headless JSON output (`claude -p`, `codex exec`, `gemini -p`) |
+| Reproducibility | Low; no run record beyond the chat | High: exact request + response + usage logged per run | Medium: the trajectory varies run to run, but every step can be logged |
+| Automation allowed | Generally not by the sites' terms | Yes, it is what the API is for | Yes; headless modes are designed for it |
+| Context / tools / MCP | Product connectors, set up per account | Harness-run MCP client shared by all tabs; provider-hosted MCP where offered (Anthropic MCP connector beta, OpenAI Responses remote MCP) | Native MCP config per CLI; each CLI has its own system prompt and tools |
+| Agentic RL | Not usable | Single-turn and tool-use evals; RLVR-style graders on outputs; pass@k / pass^k by repeated sampling | Multi-step trajectories with verifiable rewards (tests pass, task done) inside sandboxes; best for agentic tasks |
+| Enterprise fit | Seats, SSO, data controls per product | Org keys, workspaces, spend limits, ZDR options; also Bedrock / Vertex / Foundry for data residency | Runs in your containers / CI with your MCP servers and secrets |
+| Fair model comparison | No | Yes, if every tab gets the same prompt, tools and MCP servers | Only within one harness; comparing CLIs compares products, not models |
+
+Plan: API tabs now (v0.3). Next, an **agent tab** type that runs one headless agent loop per tab in its own container with
+the same tools and MCP servers for every model (own loop over the APIs for fairness; vendor CLIs as an optional "product"
+comparison). Graders (objective tests, rubric judges, critic model) and pass@k / pass^k come after.
+
+### Keys and minimum spend for the PoC (verify current prices on each provider's page)
+| Provider | Get a key | Minimum to start | Cheapest useful model |
+|---|---|---|---|
+| Anthropic | Console → Billing (buy credits) → Workspaces (spend limit) → API keys | Small prepaid credit (about $5) | Haiku 4.5 ($1 / $5 per Mtok); Opus 5.5 $4 / $20; Fable 5.1 $10 / $50 |
+| OpenAI | platform.openai.com → Billing (prepaid credits) → Project with budget → API keys | Small prepaid credit (about $5) | A mini or nano model |
+| Google Gemini | aistudio.google.com → Get API key | $0 on the free tier (rate-limited; free-tier prompts may be used to improve Google products, so don't send private data) | 2.5 Flash |
+| xAI | console.x.ai → buy the smallest credit amount → API keys | Small prepaid credit | grok-3-mini |
+| Open models, local | Install Ollama, `ollama pull qwen3:8b` (also `gpt-oss:20b`, `deepseek-r1:8b`) | $0; needs about 16 GB RAM | OpenAI-compatible at `http://localhost:11434/v1` |
+| Open models, hosted | Groq console (free tier) or OpenRouter (one key, many models, some free variants) | $0 to start | gpt-oss-120b on Groq; Llama 4 / Kimi K2 / Qwen on OpenRouter |
+
+Keys go in the server's `.env` (never committed): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`,
+`GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OLLAMA_BASE_URL`. Set a spend limit in every console in addition to the harness cap.

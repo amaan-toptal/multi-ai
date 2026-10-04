@@ -151,3 +151,31 @@ or a window's `+` to add Grok or Open WebUI, `×` to close, the strip chips to s
 1. Owner reviews the mockup and decides route A or B (spec v0.2).
 2. Then backend on `poc/variant-windows`: strip seeded examples, real windows (one provider first), export zip, repo per experiment.
 3. Unchanged: real-API smoke test, append-only CI verifier, block force pushes (owner TODO).
+
+---
+
+## Session 1, part 6 — 2026-10-04 — variant tabs, diff-style repo, API decision (model: Opus 5.5)
+
+**Prompt:** [0011](prompts/0011-2026-10-04-variant-tabs-git-diff-api-decision.md)
+
+### What changed
+- Owner chose provider APIs (spec v0.3). Mockup rebuilt (`docs/mockup/index.html`, same artifact link
+  https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx):
+  - one browser whose tabs are the variants (status-coloured, × to close, + New tab, side by side or one tab);
+  - per-tab API controls (model, effort / thinking setting, web search), endpoint in each pane header;
+  - **MCP & tools** menu: example servers shared by every tab;
+  - **Repo panel** docked right: "Not sent yet" live diff of `prompt.md` and `harness.yaml`, then typed commits
+    (P/C/T/M/R) that expand to diffs; reply commits add the run files.
+- spec v0.3: decision, web UI vs API vs CLI comparison for agentic RL and enterprise, key setup and minimum spend.
+- README: new "API keys for the PoC" section.
+- evals D-40…D-47, E-12…E-13, B-16…B-18, L-20…L-22.
+
+### How to verify
+Artifact: type a prompt, change a tab's effort, connect an MCP server, and watch "Not sent yet" fill with the diff; press
+Enter; tabs turn yellow then green and commits appear; click any commit to expand its diff. Locally: open the file.
+
+### Next steps
+1. Owner reviews the mockup; then build the backend on `poc/variant-windows`: provider adapters (Anthropic first, then
+   OpenAI-compatible for OpenAI / Groq / OpenRouter / Ollama, Gemini, xAI), `harness.yaml` + git per experiment, export zip.
+2. Strip seeded examples from the server at the same time (D-32).
+3. Later: agent tabs in containers, graders, pass@k / pass^k.

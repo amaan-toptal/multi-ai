@@ -64,6 +64,24 @@ web app isn't something Anthropic's terms allow, so multi-ai uses Console API ke
 **Running it for yourself only?** You can set `ANTHROPIC_API_KEY` on the server instead of pasting it in the browser.
 The server then **requires** `APP_PASSWORD` so strangers can't spend your credits.
 
+## API keys for the PoC (cheapest way to try every provider)
+
+The PoC branch (`poc/variant-windows`) is moving to one tab per provider API. Keys you will need, cheapest first:
+
+- **Ollama (open models, local, free):** install from ollama.com, then `ollama pull qwen3:8b` (or `gpt-oss:20b`,
+  `deepseek-r1:8b`). It serves an OpenAI-compatible API at `http://localhost:11434/v1`. Needs about 16 GB of RAM.
+- **Gemini (free tier):** aistudio.google.com → Get API key. Rate-limited; free-tier prompts may be used to improve
+  Google products, so use public test prompts.
+- **Groq or OpenRouter (hosted open models):** both have free starting options; OpenRouter gives one key for many models.
+- **Anthropic:** Console → Billing → buy a small credit (about $5) → Workspaces → create `multi-ai-poc` with a spend
+  limit → API keys. A short prompt costs well under a cent on Haiku 4.5 and about a cent on Opus 5.5, plus thinking tokens.
+- **OpenAI:** platform.openai.com → Billing (small prepaid credit) → a project with a budget → API keys.
+- **xAI:** console.x.ai → buy the smallest credit amount → API keys.
+
+Put keys in the server's `.env` (never commit it): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`,
+`GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OLLAMA_BASE_URL`. Set a spend limit in every provider console as well as the
+harness spend cap. Today's server still calls Anthropic only; the other providers arrive with the PoC backend.
+
 ## Hosting (GCP / AWS / DigitalOcean)
 
 Short version, on any Ubuntu VM:

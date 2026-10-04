@@ -242,3 +242,48 @@
 - **L-18 Thinking is not comparable across providers:** some return summaries, open-weight models return raw text, Grok 4 returns
   none. Exports must label which kind each window has.
 - **L-19 The spend cap only works where usage is metered** (APIs). Subscription web UIs expose no token counts.
+
+---
+
+## 2026-10-04 — session 1, part 6 (prompt 0011) — variant tabs, diff-style repo, API decision
+
+### Decisions taken without asking
+- **D-40 Harness state is two files, `prompt.md` and `harness.yaml`,** so "what the user did" is an ordinary git diff. Tabs are
+  keyed by id in the YAML so a change to one tab produces a small hunk.
+- **D-41 Changes are staged, not committed one by one.** The repo panel shows "Not sent yet" with a live diff; Send commits
+  all pending changes as one commit before the runs. One commit per run keeps history readable while each change is still
+  listed in plain words. A Send with no change is an empty "take" commit.
+- **D-42 Each Send is a fresh-context run, not a chat continuation**, labelled "Run N · prompt vN · fresh context" in every
+  pane. Prompt-engineering comparisons need each version answered from scratch.
+- **D-43 MCP servers are shared by every tab** and run by the harness, which offers their tools to each provider as function
+  tools. Provider-hosted MCP (Anthropic's connector, OpenAI's remote MCP) differs per provider, so it would make tabs unequal.
+- **D-44 The repo panel is docked on the right (overlay below 1100 px)** instead of a floating window, because the floating
+  window covered a pane in the previous version.
+- **D-45 Per-tab controls are now API settings,** not web UI toggles: model, effort / thinking budget / reasoning level as each
+  API names it, web search; models whose thinking can't be changed show it as fixed.
+- **D-46 Open models are one tab type with several hosts** (Ollama local, Groq, OpenRouter) because they all speak the OpenAI-
+  compatible API; raw thinking is labelled "Thinking, raw text".
+- **D-47 Opening state shows each commit kind:** init, prompt v1 and its runs, then prompt v2 + Claude effort medium → high +
+  MCP filesystem in one commit and its runs.
+
+### Evaluations performed
+- **E-12 Claude API facts checked against the bundled claude-api reference (cached 2026-09-25):** model ids and prices
+  (Opus 5.5 $4/$20, Sonnet 5.5 $2/$10, Fable 5.1 $10/$50, Haiku 4.5 $1/$5), Opus 5.5 effort default `medium` with thinking
+  always on, Haiku 4.5 uses `budget_tokens`, MCP connector beta needs `mcp_servers` plus an `mcp_toolset` tool.
+  Non-Anthropic model names, prices and thinking controls are from memory and marked as placeholders.
+- **E-13 Headless Chromium run:** opens with 3 green tabs and 9 commits; editing the prompt, Claude effort and adding MCP github
+  shows 3 pending changes with word-level prompt diff and YAML hunks; Send turns tabs yellow, commits the change set, adds
+  pending R rows, and all tabs end green; 400 px dark has no horizontal scroll; no page errors.
+
+### Bugs found (fixed)
+- **B-16** Reply paragraphs rendered in two columns because the reply container's class `body` collided with the browser
+  body's flex rule. Renamed the layout class to `bbody`.
+- **B-17** The MCP "Called …" line wrapped into a broken block in narrow panes; now one line with ellipsis.
+- **B-18** The desktop-style switch was cut off at phone width; hidden below 720 px.
+
+### Loopholes / risks
+- **L-20 Gemini free tier** may use prompts to improve Google's products; fine for public test prompts, not for private context.
+- **L-21 Fresh-context runs mean MCP tool results can differ between tabs** (same server, different calls). The trace records
+  each call so differences are visible, but tool output is part of the variance.
+- **L-22 Comparing vendor CLIs compares products** (system prompt, tools, loop), not models; the agent-tab plan needs one
+  shared loop for model comparisons.
