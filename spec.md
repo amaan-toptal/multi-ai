@@ -213,3 +213,26 @@ comparison). Graders (objective tests, rubric judges, critic model) and pass@k /
 
 Keys go in the server's `.env` (never committed): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`,
 `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OLLAMA_BASE_URL`. Set a spend limit in every console in addition to the harness cap.
+
+---
+
+## v0.4 — 2026-10-04 — free models past the cap, floating repo window, artifacts and repo export (prompt 0012)
+
+### Change to the plan
+- **The spend cap only limits paid tabs.** A tab whose model costs $0 per token (local open models through Ollama, or a
+  provider's free tier such as Groq's) always runs, including with the cap at $0. When the cap is reached, running paid tabs
+  stop and keep their partial reply; on the next Send, paid tabs are skipped with a "not sent" note and a commit, and free
+  tabs run. The Send button says how many tabs will actually run.
+- **macOS only.** The macOS/Ubuntu switch is removed.
+- **The repo is a floating window** again: drag by its title bar, resize from the corner, maximize (button or double-click),
+  minimize to a dock pill, close, and reopen from the toolbar. It has three views:
+  - **Changes**: "Not sent yet" diff, then commits; user commits offer **Restore this state** (loads that prompt and
+    settings as unsent changes) and **Branch from here** (the same, on a new branch `from-<sha>`; main is untouched).
+  - **Files & artifacts**: artifact cards and the full file tree at HEAD; HTML artifacts run inline in a sandboxed frame
+    (scripts allowed, no same-origin), with a Source toggle; other files show as text.
+  - **Export & restore**: stats, **Download repo as .zip** (working tree plus `.git`), **Download git bundle**
+    (`git bundle create --all`, one file, cloneable), **Push to a remote**, **Restore a shared experiment** (.zip or
+    .bundle becomes a new experiment), and an **Analyse** table per tab with the git commands to dig further.
+- Repo contents are now concrete files: `README.md`, `harness.yaml`, `prompt.md`, `ledger.jsonl` (one JSON line per run and
+  reply with unix/ISO/human time), and per run and tab `response.md`, `thinking.md`, `trace.jsonl`, `screenshot.png`,
+  `artifacts/artifact-01.html`.

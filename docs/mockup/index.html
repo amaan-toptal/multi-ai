@@ -3,10 +3,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <style>
-/* Layout: a remote-desktop frame holding one browser. Its tab strip is the list of variants; the panes below
-   show every tab side by side (or one at a time); a docked repo panel shows each user change as a git diff. */
+/* Layout: a macOS remote desktop holding one browser whose tab strip is the list of variants, plus a floating,
+   resizable "Experiment repo" window (changes as diffs, files with inline artifact previews, export/restore). */
 :root{
-  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Ubuntu,Roboto,sans-serif;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   --font-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
   --wall-1:#d5dfe2; --wall-2:#9db2bb; --wall-3:#e9e0d3;
@@ -61,11 +61,6 @@
   --scrim:rgba(0,0,0,.6);
   color-scheme:dark;
 }
-:root[data-os="ubuntu"]{
-  --wall-1:#3b1030; --wall-2:#77214f; --wall-3:#d0592c;
-  --bar-bg:#161616; --bar-fg:#f2f2f2; --bar-muted:#b5b5b5; --bar-line:#000000;
-  --r-win:12px;
-}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -88,26 +83,20 @@ form{margin:0}
 .budget[data-level="warn"] .meter i{background:var(--run-ring)}
 .budget[data-level="over"] .meter i{background:var(--stop-ring)}
 .budget[data-level="over"] .spent{color:var(--stop)}
-.seg{display:inline-flex;border:1px solid var(--bar-line);border-radius:6px;overflow:hidden}
-.seg button{border:0;background:transparent;padding:1px 8px;cursor:pointer;color:var(--bar-muted)}
-.seg button[aria-pressed="true"]{background:var(--bar-fg);color:var(--bar-bg)}
-:root[data-os="ubuntu"] .menubar .seg button[aria-pressed="true"]{background:#f2f2f2;color:#161616}
 .clock{font-variant-numeric:tabular-nums}
-:root[data-os="ubuntu"] .clock{position:absolute;left:50%;transform:translateX(-50%);font-weight:600}
 
-/* Desktop + the one browser */
+/* Desktop + browser */
 .desktop{position:relative;flex:1;min-height:0;background:
   radial-gradient(120% 90% at 85% 10%,var(--wall-3) 0%,transparent 55%),
   linear-gradient(160deg,var(--wall-1) 0%,var(--wall-2) 100%)}
 .browser{position:absolute;inset:12px 16px 14px;display:flex;flex-direction:column;background:var(--chrome);border-radius:var(--r-win);overflow:hidden;box-shadow:var(--shadow),0 0 0 1px var(--chrome-line)}
-
-/* Tab strip = variant list */
 .tabbar{display:flex;align-items:flex-end;gap:6px;min-height:42px;padding:0 10px;background:var(--chrome-2)}
 .lights{display:flex;gap:7px;align-self:center;flex:none}
-.light{width:12px;height:12px;border-radius:50%}
+.light{position:relative;width:12px;height:12px;border-radius:50%;border:0;padding:0}
 .light.close{background:#ff5f57}.light.min{background:#febc2e}.light.max{background:#28c840}
-:root[data-os="ubuntu"] .lights{order:9;gap:10px}
-:root[data-os="ubuntu"] .light{width:16px;height:16px;background:var(--chrome-line)}
+button.light{cursor:pointer}
+button.light::after{content:attr(data-glyph);position:absolute;inset:0;display:grid;place-items:center;font:700 10px/1 var(--font-ui);color:rgba(0,0,0,.6);opacity:0}
+.lights:hover button.light::after,button.light:focus-visible::after{opacity:1}
 .tabs{display:flex;align-items:flex-end;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;padding-top:6px}
 .vtab{position:relative;display:flex;align-items:center;flex:0 1 230px;min-width:120px;height:34px;border-radius:9px 9px 0 0;background:var(--chrome);color:var(--chrome-fg);border:1px solid var(--chrome-line);border-bottom:0}
 .vtab::before{content:"";position:absolute;left:0;right:0;top:-1px;height:3px;border-radius:9px 9px 0 0;background:var(--idle)}
@@ -131,7 +120,6 @@ form{margin:0}
 .view button[aria-pressed="true"]{background:var(--tab);color:var(--chrome-fg);font-weight:600}
 @keyframes pulse{50%{opacity:.35}}
 
-/* Toolbar: the broadcast prompt lives where a URL bar would */
 .toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;padding:8px 10px;background:var(--tab);border-bottom:1px solid var(--chrome-line)}
 .toolbar .field{flex:1 1 300px;min-width:0}
 .toolbar label{display:block;font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 3px 4px}
@@ -144,14 +132,13 @@ form{margin:0}
 .btn.primary:hover{filter:brightness(1.06)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.danger{border-color:var(--stop-ring);color:var(--stop)}
+.btn.sm{padding:4px 9px;font-size:12px}
 .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 .count{font:11px var(--font-mono);padding:0 5px;border-radius:999px;background:var(--line);color:var(--fg)}
 kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px solid currentColor;opacity:.8}
-.capbar{display:flex;align-items:center;padding:7px 12px;background:var(--stop-soft);color:var(--stop);border-bottom:1px solid var(--stop-ring);font-weight:550}
+.capbar{display:flex;align-items:center;padding:7px 12px;background:var(--stop-soft);color:var(--stop);border-bottom:1px solid var(--stop-ring);font-weight:550;line-height:1.4}
 
-/* Body: panes + repo */
-.bbody{position:relative;flex:1;min-height:0;display:flex}
-.panes{flex:1;min-width:0;display:grid;gap:10px;padding:10px;overflow:auto;background:var(--chrome)}
+.panes{flex:1;min-height:0;min-width:0;display:grid;gap:10px;padding:10px;overflow:auto;background:var(--chrome)}
 .empty-panes{grid-column:1/-1;display:grid;place-items:center;color:var(--muted);text-align:center;line-height:1.5}
 .pane{display:flex;flex-direction:column;min-width:0;min-height:0;border-radius:8px;overflow:hidden;background:var(--panel);box-shadow:0 0 0 1px var(--chrome-line);transition:box-shadow .25s}
 .pane[data-status="run"]{box-shadow:0 0 0 2.5px var(--run-ring)}
@@ -160,6 +147,9 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .pane-head{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .pane-head .who{font-weight:650;color:var(--fg)}
 .pane-head .ep{font-family:var(--font-mono);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.badge{flex:none;font-size:10.5px;font-weight:650;padding:1px 7px;border-radius:999px}
+.badge.free{background:var(--ok-soft);color:var(--ok)}
+.badge.paused{background:var(--stop-soft);color:var(--stop)}
 .tool{flex:none;border:1px solid var(--line);background:transparent;border-radius:6px;padding:1px 8px;cursor:pointer;font-size:11px}
 .tool[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
 .wstatus{display:flex;gap:12px;padding:4px 10px;background:var(--panel-2);border-top:1px solid var(--line);color:var(--muted);font:11px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
@@ -217,7 +207,8 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .thought-body.raw{font-family:var(--font-mono);font-size:11.5px}
 .cursor::after{content:"";display:inline-block;width:7px;height:1em;margin-left:2px;vertical-align:-2px;background:var(--p-fg);animation:pulse .9s steps(2) infinite}
 .artifact{display:flex;align-items:center;gap:10px;margin:2px 0 8px;padding:8px 10px;border:1px solid var(--p-line);border-radius:10px;font:12.5px var(--font-ui)}
-.artifact span{color:var(--p-muted)}
+.artifact .meta{color:var(--p-muted);flex:1;min-width:0}
+.artifact button{border:1px solid var(--p-line);background:var(--p-bg);color:var(--p-fg);border-radius:8px;padding:3px 9px;cursor:pointer;font:inherit}
 .msg-tools{display:flex;gap:12px;font:11.5px var(--font-ui);color:var(--p-muted)}
 .msg-tools button{border:0;background:none;padding:0;color:inherit;cursor:pointer}
 .msg-tools button:hover{color:var(--p-fg)}
@@ -235,7 +226,6 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .senddot{margin-left:auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--p-accent);color:var(--p-bg);font-weight:700;flex:none}
 .page[data-skin="claude"] .senddot{border-radius:9px}
 
-/* Trace drawer */
 .trace{display:flex;flex-direction:column;max-height:44%;min-height:120px;border-top:1px solid var(--line);background:var(--panel)}
 .trace-head{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line)}
 .trace-head input{flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);font-size:12px}
@@ -246,18 +236,22 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .trace-list .ty{color:var(--accent)}
 .trace-list .dt{overflow-wrap:anywhere}
 
-/* Repo panel */
-.repo{width:400px;flex:none;display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--chrome-line);min-height:0}
-.repo-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
-.repo-head h2{margin:0;font-size:13px}
-.repo-head .sub{font:11px var(--font-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
-.repo-head button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 6px;border-radius:6px}
-.repo-head button:hover{background:var(--panel-2);color:var(--fg)}
-.repo-scroll{flex:1;min-height:0;overflow:auto}
+/* Floating repo window */
+.fw{position:absolute;z-index:20;display:flex;flex-direction:column;background:var(--panel);border-radius:var(--r-win);box-shadow:var(--shadow),0 0 0 1px var(--chrome-line);overflow:hidden;resize:both;min-width:320px;min-height:240px;max-width:calc(100% - 16px);max-height:calc(100% - 16px)}
+.fw.max{inset:12px 16px 14px!important;width:auto!important;height:auto!important;max-width:none;max-height:none;resize:none}
+.fw-bar{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;background:var(--chrome-2);border-bottom:1px solid var(--chrome-line);cursor:grab;user-select:none;touch-action:none;flex:none}
+.fw-bar:active{cursor:grabbing}
+.fw-title{font-weight:650;font-size:12.5px;color:var(--chrome-fg)}
+.branch{font:11px var(--font-mono);padding:1px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--chrome-line);color:var(--chrome-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rtabs{display:flex;gap:2px;padding:4px 10px 0;border-bottom:1px solid var(--line);background:var(--panel);flex:none}
+.rtabs button{border:0;border-bottom:2px solid transparent;background:none;padding:7px 10px 6px;cursor:pointer;color:var(--muted);font-size:12.5px}
+.rtabs button[aria-selected="true"]{color:var(--fg);font-weight:600;border-bottom-color:var(--accent)}
+.rview{flex:1;min-height:0;overflow:auto}
+.rview.files{display:flex;flex-direction:column;overflow:hidden}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .kind{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;font:700 11px/1 var(--font-mono);font-style:normal;color:#fff;background:var(--k-init);flex:none}
-.legend .kind{width:16px;height:16px;font-size:9.5px;border-radius:4px}
+.legend .kind,.changes .kind{width:16px;height:16px;font-size:9.5px;border-radius:4px}
 .kind[data-k="prompt"],.kind[data-k="rerun"]{background:var(--k-prompt)}
 .kind[data-k="config"]{background:var(--k-config)}
 .kind[data-k="mcp"]{background:var(--k-mcp)}
@@ -271,7 +265,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .wc p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
 .changes{margin:6px 0 8px;padding:0;list-style:none;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
 .changes li{display:flex;gap:7px;align-items:flex-start}
-.changes .kind{width:16px;height:16px;font-size:9.5px;border-radius:4px;margin-top:1px}
+.changes .kind{margin-top:1px}
 .commits{list-style:none;margin:0;padding:0 0 12px}
 .cm{border-top:1px solid var(--line)}
 .cm.fresh{animation:fresh .6s ease-out}
@@ -283,9 +277,12 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .cm-meta b{color:var(--accent);font-weight:600}
 .cm-body{padding:0 12px 10px 41px}
 .cm-body ul{margin:0 0 8px;padding-left:16px;font-size:12px;color:var(--muted)}
+.cm-actions{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 .diff{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px;font:11.5px/1.5 var(--font-mono)}
-.diff .fname{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-weight:600;overflow-wrap:anywhere}
-.diff .fname span{font-weight:400;color:var(--muted);flex:none}
+.diff .fname{display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-weight:600}
+.diff .fname .p{flex:1;min-width:0;overflow-wrap:anywhere}
+.diff .fname .s{font-weight:400;color:var(--muted);flex:none}
+.diff .fname button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:0 7px;font:11px var(--font-ui);cursor:pointer}
 .ln{display:flex;white-space:pre-wrap;overflow-wrap:anywhere}
 .ln .sg{width:18px;flex:none;text-align:center;color:var(--muted);user-select:none}
 .ln .tx{flex:1;min-width:0;padding-right:8px}
@@ -296,7 +293,50 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .ln del{text-decoration:none;background:var(--del-mark);border-radius:2px}
 .note{padding:4px 8px;color:var(--muted);font-size:12px}
 
-/* Popovers, sheet, toast */
+.flist{flex:0 1 auto;max-height:48%;overflow:auto;border-bottom:1px solid var(--line);padding:4px 0 8px}
+.sec{padding:8px 12px 3px;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650}
+.arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:2px 12px 4px}
+.art{display:flex;flex-direction:column;gap:2px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-align:left;cursor:pointer;font-size:12px}
+.art:hover,.art[aria-current="true"]{border-color:var(--accent)}
+.art small{color:var(--muted);font:10.5px var(--font-mono)}
+.frow{display:flex;align-items:center;gap:6px;width:100%;padding:2px 12px;border:0;background:none;text-align:left;cursor:pointer;font:11.5px/1.6 var(--font-mono);color:var(--fg)}
+.frow:hover{background:var(--panel-2)}
+.frow[aria-current="true"]{background:var(--panel-2);box-shadow:inset 2px 0 var(--accent)}
+.frow.dir{cursor:default;color:var(--muted)}
+.frow .sz{margin-left:auto;color:var(--muted);font-size:10.5px}
+.viewer{flex:1;min-height:0;display:flex;flex-direction:column}
+.vhead{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);font:11.5px var(--font-mono)}
+.vhead .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex:none}
+.seg button{border:0;background:transparent;padding:2px 8px;cursor:pointer;font:11.5px var(--font-ui);color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);font-weight:600}
+.vbody{flex:1;min-height:0;overflow:auto;background:var(--panel)}
+.vbody pre{margin:0;padding:10px 12px;font:11.5px/1.55 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.vbody iframe{display:block;width:100%;height:100%;min-height:220px;border:0;background:#fff}
+.vempty{display:grid;place-items:center;height:100%;padding:16px;color:var(--muted);text-align:center;line-height:1.5}
+.shot{margin:12px;aspect-ratio:16/10;max-width:100%;border:1px dashed var(--line);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center;padding:12px}
+
+.exp{padding:10px 12px 16px;display:flex;flex-direction:column;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0}
+.stats div{padding:7px 9px;border:1px solid var(--line);border-radius:8px}
+.stats dt{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stats dd{margin:2px 0 0;font:600 15px var(--font-mono);font-variant-numeric:tabular-nums}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.card h4{margin:0;font-size:12.5px}
+.card p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.card .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.card input[type="text"]{flex:1;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);font:12px var(--font-mono)}
+.card input[type="file"]{font-size:12px;max-width:100%}
+.card code{font:11px var(--font-mono)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th{font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.cmds{margin:0;padding:8px 10px;border-radius:8px;background:var(--panel-2);font:11px/1.6 var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+
+.dock{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:25;display:flex;gap:6px;padding:5px 8px;border-radius:14px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:var(--shadow),0 0 0 1px var(--bar-line)}
+.dock button{display:flex;align-items:center;gap:7px;border:0;border-radius:9px;background:var(--panel);padding:5px 10px;cursor:pointer;font-size:12px}
+
 .popover{position:absolute;z-index:40;width:330px;max-width:calc(100% - 32px);max-height:70%;overflow:auto;padding:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .popover h3{margin:6px 8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .popover .item{display:flex;gap:10px;align-items:center;width:100%;padding:7px 8px;border:0;border-radius:8px;background:transparent;text-align:left;cursor:pointer}
@@ -316,19 +356,18 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .sheet pre{margin:0 0 14px;padding:12px;border-radius:10px;background:var(--panel-2);overflow:auto;font:11.5px/1.55 var(--font-mono)}
 .sheet .row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .foot{padding:4px 16px;font-size:11px;color:var(--bar-muted);background:var(--bar-bg);border-top:1px solid var(--bar-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.toast{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:60;padding:8px 14px;border-radius:8px;background:var(--fg);color:var(--panel);font-size:12.5px;box-shadow:var(--shadow)}
+.toast{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);z-index:60;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:var(--fg);color:var(--panel);font-size:12.5px;box-shadow:var(--shadow)}
 
-@media (max-width:1100px){
-  .repo{position:absolute;right:0;top:0;bottom:0;width:min(400px,100%);z-index:30;box-shadow:var(--shadow)}
-}
 @media (max-width:720px){
   .menubar{gap:10px;overflow:hidden}
-  .menubar .session,.menubar .os-label,.menubar .clock,.menubar .seg{display:none}
+  .menubar .session,.menubar .clock{display:none}
   .budget .lbl{display:none}
   .view{display:none}
-  .lights{display:none}
+  .tabbar .lights{display:none}
   .toolbar .tb-actions{width:100%}
   .toolbar .tb-actions .btn.primary{flex:1;justify-content:center}
+  .fw{left:16px!important;right:16px;width:auto!important;top:48px!important;height:62%!important;resize:none}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -338,20 +377,16 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 <div class="app" id="app">
   <div class="menubar">
     <span class="app-name">multi-ai harness</span>
-    <span class="session" id="session"></span>
+    <span class="session">vnc://harness-01 · macOS VM · tabs call provider APIs</span>
     <span class="spacer"></span>
-    <span class="budget" id="budget" title="Spend cap for the whole project. Running tabs stop when it is reached.">
-      <span class="lbl">Spend</span> <span class="spent" id="spent">$0.000</span> <span class="lbl">of cap</span> $<input id="cap" type="number" min="0.05" step="0.05" value="0.30" aria-label="Spend cap in US dollars">
+    <span class="budget" id="budget" title="Spend cap for paid tabs. Free tabs (local open models) are never blocked by it.">
+      <span class="lbl">Spend</span> <span class="spent" id="spent">$0.000</span> <span class="lbl">of cap</span> $<input id="cap" type="number" min="0" step="0.05" value="0.50" aria-label="Spend cap in US dollars">
       <span class="meter" aria-hidden="true"><i id="meterFill"></i></span>
-    </span>
-    <span class="os-label">Desktop</span>
-    <span class="seg" role="group" aria-label="Desktop style">
-      <button id="osMac" aria-pressed="true">macOS</button><button id="osUbuntu" aria-pressed="false">Ubuntu</button>
     </span>
     <span class="clock" id="clock"></span>
   </div>
 
-  <div class="desktop">
+  <div class="desktop" id="desktop">
     <div class="browser">
       <div class="tabbar">
         <span class="lights" aria-hidden="true"><span class="light close"></span><span class="light min"></span><span class="light max"></span></span>
@@ -375,43 +410,56 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
         </div>
       </form>
       <div class="capbar" id="capbar" hidden></div>
-      <div class="bbody">
-        <div class="panes" id="panes"></div>
-        <aside class="repo" id="repo" aria-label="Experiment repository">
-          <div class="repo-head">
-            <h2>Experiment repo</h2>
-            <span class="sub" id="repoSub">main · append-only</span>
-            <button type="button" id="repoClose" aria-label="Hide the repo panel">×</button>
-          </div>
-          <div class="repo-scroll">
-            <div class="legend" aria-label="Change types">
-              <span><i class="kind" data-k="prompt">P</i>prompt</span>
-              <span><i class="kind" data-k="config">C</i>model, effort, tabs</span>
-              <span><i class="kind" data-k="tool">T</i>tool</span>
-              <span><i class="kind" data-k="mcp">M</i>MCP server</span>
-              <span><i class="kind" data-k="run">R</i>reply saved</span>
-            </div>
-            <div class="wc" id="wc"></div>
-            <ol class="commits" id="commits"></ol>
-          </div>
-        </aside>
-      </div>
+      <div class="panes" id="panes"></div>
     </div>
+
+    <section class="fw" id="repo" aria-label="Experiment repo window">
+      <header class="fw-bar" id="repoBar">
+        <div class="lights">
+          <button class="light close" type="button" data-glyph="×" id="repoClose" aria-label="Close the repo window"></button>
+          <button class="light min" type="button" data-glyph="–" id="repoMin" aria-label="Minimize the repo window to the dock"></button>
+          <button class="light max" type="button" data-glyph="+" id="repoMax" aria-label="Maximize or restore the repo window"></button>
+        </div>
+        <span class="fw-title">Experiment repo</span>
+        <span class="branch" id="branchChip">main</span>
+      </header>
+      <nav class="rtabs" role="tablist" aria-label="Repo views">
+        <button type="button" role="tab" data-view="changes" aria-selected="true">Changes</button>
+        <button type="button" role="tab" data-view="files" aria-selected="false">Files &amp; artifacts <span class="count" id="artCount">0</span></button>
+        <button type="button" role="tab" data-view="export" aria-selected="false">Export &amp; restore</button>
+      </nav>
+      <div class="rview" id="viewChanges">
+        <div class="legend" aria-label="Change types">
+          <span><i class="kind" data-k="prompt">P</i>prompt</span>
+          <span><i class="kind" data-k="config">C</i>model, effort, tabs</span>
+          <span><i class="kind" data-k="tool">T</i>tool</span>
+          <span><i class="kind" data-k="mcp">M</i>MCP server</span>
+          <span><i class="kind" data-k="run">R</i>reply saved</span>
+        </div>
+        <div class="wc" id="wc"></div>
+        <ol class="commits" id="commits"></ol>
+      </div>
+      <div class="rview files" id="viewFiles" hidden>
+        <div class="flist" id="flist"></div>
+        <div class="viewer" id="viewer"></div>
+      </div>
+      <div class="rview" id="viewExport" hidden></div>
+    </section>
+    <div class="dock" id="dock" hidden></div>
   </div>
 
   <div class="foot">Mockup with simulated replies. Tabs call each provider's API; pages are styled after each provider's chat layout for planning and aren't affiliated with them. Model names and non-Anthropic prices are placeholders.</div>
 </div>
 
-<div class="overlay" id="exportOverlay" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
-    <h2 id="exportTitle">Experiment package</h2>
-    <p id="exportIntro"></p>
-    <pre id="exportTree"></pre>
-    <p><b>prompt.md</b> and <b>harness.yaml</b> at export time</p>
-    <pre id="exportFiles"></pre>
+<div class="overlay" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle"></h2>
+    <p id="sheetIntro"></p>
+    <pre id="sheetTree"></pre>
+    <pre id="sheetCmds"></pre>
     <div class="row">
-      <button class="btn" id="copyExport" type="button">Copy file list</button>
-      <button class="btn primary" id="closeExport" type="button">Close</button>
+      <button class="btn" id="sheetCopy" type="button">Copy</button>
+      <button class="btn primary" id="sheetClose" type="button">Close</button>
     </div>
   </div>
 </div>
@@ -454,12 +502,12 @@ const PROVIDERS = {
   open: { name: 'Open models', endpoint: 'localhost:11434/v1', skin: 'owui', fav: 'OS', picker: 'top', web: null,
     placeholder: 'Send a message', greet: () => 'How can I help you today?', thinkLabel: (s) => `Thinking, raw text · ${s}s`,
     models: [
-      { id: 'qwen3:8b', label: 'qwen3:8b · Ollama (local)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 24, think: 2500, raw: true, reason: { key: 'think', label: 'Thinking', opts: ['on', 'off'], def: 'on' } },
-      { id: 'gpt-oss:20b', label: 'gpt-oss:20b · Ollama (local)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 30, think: 2000, raw: true, reason: { key: 'reasoning_effort', label: 'Reasoning', opts: ['low', 'medium', 'high'], def: 'medium' } },
-      { id: 'deepseek-r1:8b', label: 'deepseek-r1:8b · Ollama (local)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 20, think: 4000, raw: true, reason: { fixed: 'always thinks' } },
-      { id: 'openai/gpt-oss-120b', label: 'gpt-oss-120b · Groq', host: 'api.groq.com/openai/v1', in: 0.15, out: 0.75, wps: 90, think: 1800, raw: true, reason: { key: 'reasoning_effort', label: 'Reasoning', opts: ['low', 'medium', 'high'], def: 'medium' } },
-      { id: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick · OpenRouter', host: 'openrouter.ai/api/v1', in: 0.15, out: 0.6, wps: 50, reason: null },
-      { id: 'moonshotai/kimi-k2', label: 'Kimi K2 · OpenRouter', host: 'openrouter.ai/api/v1', in: 0.6, out: 2.5, wps: 40, reason: null } ] },
+      { id: 'qwen3:8b', label: 'qwen3:8b · Ollama (local, free)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 24, think: 2500, raw: true, reason: { key: 'think', label: 'Thinking', opts: ['on', 'off'], def: 'on' } },
+      { id: 'gpt-oss:20b', label: 'gpt-oss:20b · Ollama (local, free)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 30, think: 2000, raw: true, reason: { key: 'reasoning_effort', label: 'Reasoning', opts: ['low', 'medium', 'high'], def: 'medium' } },
+      { id: 'deepseek-r1:8b', label: 'deepseek-r1:8b · Ollama (local, free)', host: 'localhost:11434/v1', in: 0, out: 0, wps: 20, think: 4000, raw: true, reason: { fixed: 'always thinks' } },
+      { id: 'openai/gpt-oss-120b', label: 'gpt-oss-120b · Groq (free tier)', host: 'api.groq.com/openai/v1', in: 0, out: 0, wps: 90, think: 1800, raw: true, reason: { key: 'reasoning_effort', label: 'Reasoning', opts: ['low', 'medium', 'high'], def: 'medium' } },
+      { id: 'meta-llama/llama-4-maverick', label: 'Llama 4 Maverick · OpenRouter (paid)', host: 'openrouter.ai/api/v1', in: 0.15, out: 0.6, wps: 50, reason: null },
+      { id: 'moonshotai/kimi-k2', label: 'Kimi K2 · OpenRouter (paid)', host: 'openrouter.ai/api/v1', in: 0.6, out: 2.5, wps: 40, reason: null } ] },
 };
 const PROVIDER_ORDER = ['anthropic', 'openai', 'gemini', 'xai', 'open'];
 const MCP_CATALOG = [
@@ -473,8 +521,45 @@ const MULT = { minimal: 0.15, low: 0.4, medium: 0.7, high: 1, xhigh: 1.4, max: 1
 
 function greetingByHour() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
+/* ---------- scripted opening runs (simulated replies) ---------- */
 const V1 = 'Explain pass@k vs pass^k.';
 const V2 = 'Explain pass@k vs pass^k in two sentences, then give a one-line example.';
+const V3 = 'Explain pass@k vs pass^k in two sentences, then build a tiny HTML calculator that shows both for any p and k.';
+const ART = {
+  anthropic: `<!doctype html><meta charset="utf-8"><title>pass@k vs pass^k</title>
+<style>body{font:15px Georgia,serif;margin:18px;color:#29261b;background:#faf9f5}label{display:block;margin:10px 0}output{font-weight:700}</style>
+<label>Per-try pass rate p: <input id="rp" type="range" min="0" max="1" step="0.01" value="0.8"> <output id="pv"></output></label>
+<label>Attempts k: <input id="rk" type="range" min="1" max="20" value="3"> <output id="kv"></output></label>
+<p>pass@k = <output id="a"></output><br>pass^k = <output id="b"></output></p>
+<script>
+const rp=document.getElementById('rp'),rk=document.getElementById('rk');
+function u(){const p=+rp.value,k=+rk.value;pv.textContent=p.toFixed(2);kv.textContent=k;a.textContent=(1-(1-p)**k).toFixed(3);b.textContent=(p**k).toFixed(3)}
+rp.oninput=rk.oninput=u;u();
+<\/script>`,
+  openai: `<!doctype html><meta charset="utf-8"><title>pass@k table</title>
+<style>body{font:14px system-ui,sans-serif;margin:16px}table{border-collapse:collapse;margin-top:10px}td,th{border:1px solid #ddd;padding:4px 10px;text-align:right}</style>
+<label>p <input id="p" type="number" min="0" max="1" step="0.05" value="0.6"></label>
+<table><thead><tr><th>k</th><th>pass@k</th><th>pass^k</th></tr></thead><tbody id="t"></tbody></table>
+<script>
+const P=document.getElementById('p'),T=document.getElementById('t');
+function u(){const p=Math.min(1,Math.max(0,+P.value));T.innerHTML='';for(let k=1;k<=10;k++){const r=T.insertRow();r.insertCell().textContent=k;r.insertCell().textContent=(1-(1-p)**k).toFixed(3);r.insertCell().textContent=(p**k).toFixed(3)}}
+P.oninput=u;u();
+<\/script>`,
+  gemini: `<!doctype html><meta charset="utf-8"><title>Could it vs will it</title>
+<style>body{font:14px system-ui,sans-serif;margin:16px}canvas{display:block;margin-top:10px;max-width:100%}</style>
+<label>p <input id="p" type="range" min="0" max="1" step="0.01" value="0.9"> <span id="v"></span></label>
+<canvas id="c" width="360" height="170"></canvas>
+<script>
+const P=document.getElementById('p'),C=document.getElementById('c'),x=C.getContext('2d'),V=document.getElementById('v');
+function u(){const p=+P.value;V.textContent=p.toFixed(2);x.clearRect(0,0,360,170);x.fillStyle='#333';x.fillText('blue: pass@k   orange: pass^k   k = 1 to 10',6,12);for(let k=1;k<=10;k++){const a=1-(1-p)**k,b=p**k,X=(k-1)*35+6;x.fillStyle='#1b66d2';x.fillRect(X,165-a*140,14,a*140);x.fillStyle='#e8710a';x.fillRect(X+15,165-b*140,14,b*140)}}
+P.oninput=u;u();
+<\/script>`,
+  open: `<!doctype html><meta charset="utf-8"><title>passk</title>
+<p>p <input id="p" value="0.7" size="4"> k <input id="k" value="5" size="3"> <button id="go">compute</button></p><pre id="o"></pre>
+<script>
+const go=document.getElementById('go');go.onclick=()=>{const p=+document.getElementById('p').value,k=+document.getElementById('k').value;document.getElementById('o').textContent='pass@'+k+' = '+(1-(1-p)**k).toFixed(4)+'\\npass^'+k+' = '+(p**k).toFixed(4)};go.click();
+<\/script>`,
+};
 const SAMPLE = {
   [V1]: {
     anthropic: { thought: 'Define both over k independent attempts and contrast them.', md: 'pass@k is the probability that at least one of k sampled attempts passes. pass^k is the probability that all k attempts pass, so it measures consistency rather than best-case ability.' },
@@ -486,18 +571,26 @@ const SAMPLE = {
     openai: { thought: 'Under independence pass@k = 1 − (1 − p)^k and pass^k = p^k. Pick p = 0.6 and k = 5 to show a large gap.', md: 'pass@k measures whether a model solves a task in **any** of k tries; pass^k measures whether it solves it in **every** one of k tries, which makes it a consistency metric.\n\n- One line: p = 0.6 per try gives pass@5 ≈ 0.99 but pass^5 ≈ 0.08.' },
     gemini: { thought: 'Frame it as could-it versus will-it. A 90% agent makes the drop in pass^k visible with only two tries.', md: 'Pass@k asks *could it?*: the probability that at least one of k samples is correct. Pass^k asks *will it, every time?*: the probability that all k samples are correct.\n\nExample: a coding agent that passes 9 of 10 runs has pass@2 ≈ 0.99 but pass^2 ≈ 0.81.' },
   },
+  [V3]: {
+    anthropic: { thought: 'Keep the two sentences from before and add sliders so the gap is felt, not just read.', md: '**pass@k** is the chance that at least one of k attempts passes; **pass^k** is the chance that all k pass. Drag p and k in the calculator to watch the two pull apart.', art: ART.anthropic },
+    openai: { thought: 'A table for k = 1 to 10 makes the divergence obvious at a glance.', md: 'pass@k = 1 − (1 − p)^k counts any success in k tries; pass^k = p^k needs every try to succeed. The table shows both for k = 1 to 10.', art: ART.openai },
+    gemini: { thought: 'Bars side by side per k: blue rises toward 1, orange falls toward 0.', md: 'Pass@k asks whether a model *could* solve the task within k tries; pass^k asks whether it *will* solve it every time. The chart puts both side by side for k = 1 to 10.', art: ART.gemini },
+    open: { thought: 'user wants two sentences and a calculator. keep it minimal, no styling.', md: 'pass@k: probability at least one of k samples is correct, 1-(1-p)^k. pass^k: probability all k are correct, p^k. Minimal calculator below.', art: ART.open },
+  },
 };
 const POINTS = ['Pin down what a good answer looks like before writing one.', 'List the assumptions so a reader can check them.', 'Give the shortest version first, then the detail.', 'Name one way this could go wrong and how you would notice.', 'Say what you would measure to know it worked.', 'Keep the first version small enough to throw away.', 'Ask which constraint matters most if two of them conflict.'];
 const THOUGHTS = ['Decide the format first, then fill it in.', 'The request is short, so keep the answer short and concrete.', 'Check whether anything here needs current information.', 'Lead with the answer and keep caveats to one line.'];
 
-const st = { tabs: [], seq: 0, active: null, view: 'split', spend: 0, cap: 0.30, tripped: false, running: 0, runNo: 0, mcp: new Set(), head: null, commits: [], exp: null, takes: {} };
-const promptEl = $('#prompt'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn'), panesEl = $('#panes'), tabsEl = $('#tabs'), app = $('#app');
+const st = { tabs: [], seq: 0, active: null, view: 'split', spend: 0, cap: 0.50, running: 0, runNo: 0, mcp: new Set(), head: null, commits: [], exp: null, takes: {},
+  files: new Map(), openFile: null, fileMode: 'preview', branch: 'main', branches: ['main'], repo: 'open', rview: 'changes', ledger: [] };
+const promptEl = $('#prompt'), sendBtn = $('#sendBtn'), stopBtn = $('#stopBtn'), panesEl = $('#panes'), tabsEl = $('#tabs'), app = $('#app'), repoEl = $('#repo');
 
 function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function sha() { return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 7); }
 function stamp(d = new Date()) { return { unix: Math.floor(d.getTime() / 1000), iso: d.toISOString(), human: d.toUTCString().replace('GMT', 'UTC') }; }
 function hms(t) { return new Date(t).toISOString().slice(11, 23); }
 function usd(x) { return '$' + x.toFixed(x < 0.1 ? 4 : 3); }
+function bytes(n) { return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`; }
 function estTok(s) { return Math.max(1, Math.round(s.trim().split(/\s+/).length * 1.35)); }
 function jitter(ms, seed) { return Math.round(ms * (0.75 + ((seed % 100) / 100) * 0.5)); }
 function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 5).join('-') || 'prompt'; }
@@ -518,19 +611,23 @@ function renderMd(md) {
   flushP(); flushL();
   return html;
 }
-function toast(msg) { const t = el('div', 'toast', msg); t.setAttribute('role', 'status'); app.appendChild(t); setTimeout(() => t.remove(), 2400); }
+function toast(msg) { const t = el('div', 'toast', msg); t.setAttribute('role', 'status'); app.appendChild(t); setTimeout(() => t.remove(), 3200); }
+
+/* ---------- money: paid vs free tabs ---------- */
+function isFree(t) { return t.model.in === 0 && t.model.out === 0; }
+function capReached() { return st.spend >= st.cap; }
 
 /* ---------- harness state as files ---------- */
 function snapshot() {
   return { cap: st.cap, mcp: [...st.mcp].sort(), tabs: st.tabs.map((t) => {
     const r = t.model.reason;
-    return { id: pad(t.id), api: t.pid, label: tabLabel(t), model: t.model.id, host: t.model.host || null,
+    return { id: pad(t.id), api: t.pid, label: tabLabel(t), model: t.model.id, host: t.model.host || null, raw: t.reason,
       reasonKey: r ? (r.key || 'reasoning') : null, reasonLabel: r ? (r.label || 'Reasoning') : null,
       reason: r ? (r.fixed ? r.fixed : t.reason) : null, webName: t.p.web, web: !!t.web };
   }) };
 }
 function toYaml(s) {
-  const L = ['# harness.yaml: what every run sends. Each change is a commit.', `spend_cap_usd: ${s.cap.toFixed(2)}`, 'tabs:'];
+  const L = ['# harness.yaml: what every run sends. Each change is a commit.', `spend_cap_usd: ${s.cap.toFixed(2)}   # applies to paid tabs only`, 'tabs:'];
   s.tabs.forEach((t) => {
     L.push(`  "${t.id}":`, `    api: ${t.api}`, `    model: ${t.model}`);
     if (t.host) L.push(`    endpoint: ${t.host}`);
@@ -544,6 +641,23 @@ function toYaml(s) {
 }
 function promptMd(text, v) { return `# Prompt v${v}\n\n${text}`; }
 function workingPrompt() { return promptEl.value.trim() || (st.head ? st.head.prompt : ''); }
+const README = (slug) => `# Experiment: ${slug}
+
+This folder is a git repository written by the multi-ai harness. History is append-only.
+
+- harness.yaml: tabs, models, effort, tools, MCP servers, spend cap
+- prompt.md: the current prompt (older versions are in git history)
+- ledger.jsonl: one line per run and reply, with unix, ISO and human UTC time
+- runs/NN/<tab>/: response.md, thinking.md, trace.jsonl, screenshot.png, artifacts/
+
+Restore or analyse:
+
+    git clone experiment.bundle my-copy     # or unzip the .zip
+    git log --oneline
+    git diff <sha1> <sha2> -- prompt.md harness.yaml
+    git checkout -b retry <sha>             # branch from any state
+`;
+function putFile(path, content, kind) { st.files.set(path, { content, kind: kind || (path.endsWith('.html') ? 'html' : path.endsWith('.png') ? 'png' : 'text') }); }
 
 function changesSince() {
   const h = st.head; if (!h) return [];
@@ -602,8 +716,13 @@ function wordPair(a, b) {
 function lineHtml(cls, sign, html) { return `<div class="ln ${cls}"><span class="sg">${sign}</span><span class="tx">${html || ' '}</span></div>`; }
 function fileDiff(f) {
   const box = el('div', 'diff');
-  const head = el('div', 'fname'); head.append(document.createTextNode(f.name));
-  head.appendChild(el('span', null, f.note ? f.note : f.before == null ? 'new file' : 'modified'));
+  const head = el('div', 'fname');
+  head.append(el('span', 'p', f.name), el('span', 's', f.note ? f.note : f.before == null ? 'new file' : 'modified'));
+  if (st.files.has(f.name)) {
+    const b = el('button', null, st.files.get(f.name).kind === 'html' ? 'Preview' : 'Open'); b.type = 'button';
+    b.addEventListener('click', () => openFile(f.name));
+    head.appendChild(b);
+  }
   box.appendChild(head);
   if (f.after == null) return box;
   const ops = lcs(f.before == null ? [] : f.before.split('\n'), f.after.split('\n'));
@@ -635,7 +754,7 @@ function fileDiff(f) {
   return box;
 }
 
-/* ---------- repo panel ---------- */
+/* ---------- repo window: Changes ---------- */
 function renderWorking() {
   const wc = $('#wc'); wc.innerHTML = '';
   if (!st.head) return;
@@ -645,7 +764,7 @@ function renderWorking() {
     wc.append(el('h3', null, 'Nothing new since the last run'), el('p', null, "Edit the prompt, a tab's model or effort, web search, or MCP servers, and the diff shows here before you send. Sending commits it; each tab's reply is committed as it finishes."));
     return;
   }
-  wc.appendChild(el('h3', null, `Not sent yet · ${ch.length} change${ch.length === 1 ? '' : 's'}`));
+  wc.appendChild(el('h3', null, `Not sent yet · ${ch.length} change${ch.length === 1 ? '' : 's'}${st.branch !== 'main' ? ` · on ${st.branch}` : ''}`));
   const ul = el('ul', 'changes');
   ch.forEach((c) => { const li = el('li'); const k = el('i', 'kind', c.k[0].toUpperCase()); k.dataset.k = c.k; li.append(k, el('span', null, c.s)); ul.appendChild(li); });
   wc.appendChild(ul);
@@ -653,14 +772,14 @@ function renderWorking() {
   wc.appendChild(el('p', null, 'Press Send to commit these and run every tab.'));
 }
 function addCommit(c) {
-  c.sha = sha(); c.ts = c.ts || stamp();
+  c.sha = sha(); c.ts = c.ts || stamp(); c.branch = st.branch;
   st.commits.unshift(c);
   c.li = el('li', 'cm fresh');
   $('#commits').prepend(c.li);
   setTimeout(() => c.li.classList.remove('fresh'), 700);
   paintCommit(c);
   $('#repoCount').textContent = String(st.commits.length);
-  $('#repoSub').textContent = `main · ${st.commits.length} commits · append-only`;
+  paintBranch();
   return c;
 }
 function paintCommit(c) {
@@ -668,17 +787,219 @@ function paintCommit(c) {
   const head = el('button', 'cm-head'); head.type = 'button'; head.setAttribute('aria-expanded', String(!!c.open));
   const glyph = { prompt: 'P', rerun: '↻', config: 'C', tool: 'T', mcp: 'M', run: 'R', stop: 'R', pending: 'R', init: 'I' }[c.kind];
   const k = el('i', 'kind', glyph); k.dataset.k = c.kind;
-  const meta = el('span', 'cm-meta'); meta.innerHTML = `<b>${c.sha}</b> · ${esc(c.ts.human)} · ${c.ts.unix}`;
+  const meta = el('span', 'cm-meta'); meta.innerHTML = `<b>${c.sha}</b> · ${c.branch !== 'main' ? esc(c.branch) + ' · ' : ''}${esc(c.ts.human)} · ${c.ts.unix}`;
   head.append(k, el('span', 'cm-title', c.title), meta);
   head.addEventListener('click', () => { c.open = !c.open; paintCommit(c); });
   c.li.appendChild(head);
-  if (c.open) {
-    const body = el('div', 'cm-body');
-    if (c.changes && c.changes.length > 1) { const ul = el('ul'); c.changes.forEach((x) => ul.appendChild(el('li', null, x.s))); body.appendChild(ul); }
-    (c.files || []).forEach((f) => body.appendChild(fileDiff(f)));
-    if (!(c.files || []).length) body.appendChild(el('div', 'note', c.kind === 'pending' ? 'Files are committed when this tab finishes.' : 'No file changes. This commit marks a fresh take of the same prompt and settings.'));
-    c.li.appendChild(body);
+  if (!c.open) return;
+  const body = el('div', 'cm-body');
+  if (c.changes && c.changes.length > 1) { const ul = el('ul'); c.changes.forEach((x) => ul.appendChild(el('li', null, x.s))); body.appendChild(ul); }
+  const acts = el('div', 'cm-actions');
+  if (c.snap) {
+    const r = el('button', 'btn sm', 'Restore this state'); r.type = 'button'; r.title = 'Load this prompt and these settings as unsent changes';
+    r.addEventListener('click', () => restore(c, false));
+    const b = el('button', 'btn sm', 'Branch from here'); b.type = 'button'; b.title = 'Start a new branch from this state; main stays as it is';
+    b.addEventListener('click', () => restore(c, true));
+    acts.append(r, b);
   }
+  (c.files || []).filter((f) => /artifacts\//.test(f.name)).forEach((f) => { const p = el('button', 'btn sm', 'Preview artifact'); p.type = 'button'; p.addEventListener('click', () => openFile(f.name)); acts.appendChild(p); });
+  if (acts.children.length) body.appendChild(acts);
+  (c.files || []).forEach((f) => body.appendChild(fileDiff(f)));
+  if (!(c.files || []).length) body.appendChild(el('div', 'note', c.kind === 'pending' ? 'Files are committed when this tab finishes.' : c.kind === 'stop' ? 'Nothing was sent, so there are no files.' : 'No file changes. This commit marks a fresh take of the same prompt and settings.'));
+  c.li.appendChild(body);
+}
+function paintBranch() {
+  $('#branchChip').textContent = `${st.branch} · ${st.commits.length} commits`;
+}
+
+/* ---------- restore / branch ---------- */
+function restore(c, branch) {
+  if (st.running) { toast('Wait for the current run to finish first.'); return; }
+  const want = c.snap.tabs;
+  st.tabs.slice().forEach((t) => { if (!want.some((w) => w.id === pad(t.id))) closeTab(t); });
+  want.forEach((w) => {
+    let t = st.tabs.find((x) => pad(x.id) === w.id);
+    if (!t) t = addTab(w.api, w.model, w.raw);
+    if (!t) return;
+    t.model = t.p.models.find((m) => m.id === w.model) || t.model; t.reason = w.raw; t.web = w.web;
+    buildControls(t); refreshTab(t);
+  });
+  st.mcp = new Set(c.snap.mcp); $('#mcpCount').textContent = String(st.mcp.size); st.tabs.forEach(paintMcpChip);
+  st.cap = c.snap.cap; $('#cap').value = st.cap.toFixed(2);
+  promptEl.value = c.prompt || ''; syncMirror();
+  if (branch) { st.branch = `from-${c.sha}`; if (!st.branches.includes(st.branch)) st.branches.push(st.branch); paintBranch(); }
+  paintBudget(); renderWorking(); setRview('changes');
+  toast(branch ? `Now on branch ${st.branch}. The state from ${c.sha} is loaded as unsent changes; Send commits to this branch and main stays as it is.` : `The state from ${c.sha} is loaded as unsent changes. Review the diff, then Send to run it.`);
+}
+
+/* ---------- repo window: Files & artifacts ---------- */
+function artifacts() { return [...st.files.keys()].filter((p) => /artifacts\/.+\.html$/.test(p)); }
+function renderFiles() {
+  const fl = $('#flist'); fl.innerHTML = '';
+  const arts = artifacts();
+  $('#artCount').textContent = String(arts.length);
+  fl.appendChild(el('div', 'sec', `Artifacts · ${arts.length}`));
+  if (!arts.length) fl.appendChild(el('div', 'note', 'Artifacts appear here when a tab returns code you can run, such as an HTML page.'));
+  else {
+    const g = el('div', 'arts');
+    arts.forEach((p) => {
+      const parts = p.split('/'); const tab = parts[2] || '';
+      const b = el('button', 'art'); b.type = 'button'; b.setAttribute('aria-current', String(st.openFile === p));
+      b.append(el('span', null, st.files.get(p).label || `Run ${Number(parts[1])} · ${tab}`), el('small', null, `${parts[parts.length - 1]} · ${bytes(new Blob([st.files.get(p).content]).size)}`));
+      b.addEventListener('click', () => openFile(p));
+      g.appendChild(b);
+    });
+    fl.appendChild(g);
+  }
+  fl.appendChild(el('div', 'sec', `All files at ${st.commits[0] ? st.commits[0].sha : 'HEAD'} · ${st.files.size}`));
+  const paths = [...st.files.keys()].sort((a, b) => { const da = a.includes('/'), db = b.includes('/'); return da === db ? a.localeCompare(b) : da ? 1 : -1; });
+  const shown = new Set();
+  paths.forEach((p) => {
+    const parts = p.split('/');
+    for (let i = 0; i < parts.length - 1; i++) {
+      const d = parts.slice(0, i + 1).join('/');
+      if (!shown.has(d)) { shown.add(d); const r = el('div', 'frow dir', parts[i] + '/'); r.style.paddingLeft = (12 + i * 12) + 'px'; fl.appendChild(r); }
+    }
+    const f = st.files.get(p);
+    const b = el('button', 'frow'); b.type = 'button'; b.style.paddingLeft = (12 + (parts.length - 1) * 12) + 'px'; b.setAttribute('aria-current', String(st.openFile === p));
+    b.append(el('span', null, parts[parts.length - 1]), el('span', 'sz', f.kind === 'png' ? 'image' : bytes(new Blob([f.content]).size)));
+    b.addEventListener('click', () => openFile(p));
+    fl.appendChild(b);
+  });
+  renderViewer();
+}
+function renderViewer() {
+  const v = $('#viewer'); v.innerHTML = '';
+  const p = st.openFile, f = p && st.files.get(p);
+  if (!f) { v.appendChild(el('div', 'vempty', 'Pick an artifact or a file to view it here. HTML artifacts run in a sandbox inside this window.')); return; }
+  const head = el('div', 'vhead'); head.appendChild(el('span', 'path', p));
+  if (f.kind === 'html') {
+    const sg = el('span', 'seg');
+    ['preview', 'source'].forEach((m) => { const b = el('button', null, m === 'preview' ? 'Preview' : 'Source'); b.type = 'button'; b.setAttribute('aria-pressed', String(st.fileMode === m)); b.addEventListener('click', () => { st.fileMode = m; renderViewer(); }); sg.appendChild(b); });
+    head.appendChild(sg);
+  }
+  v.appendChild(head);
+  const body = el('div', 'vbody');
+  if (f.kind === 'html' && st.fileMode === 'preview') {
+    const fr = document.createElement('iframe');
+    fr.setAttribute('sandbox', 'allow-scripts'); fr.setAttribute('title', `Preview of ${p}`); fr.srcdoc = f.content;
+    body.appendChild(fr);
+  } else if (f.kind === 'png') {
+    body.appendChild(el('div', 'shot', 'screenshot.png: the harness captures the pane after each reply. Placeholder in this mockup.'));
+  } else body.appendChild(el('pre', null, f.content));
+  v.appendChild(body);
+}
+function openFile(p) { st.openFile = p; st.fileMode = 'preview'; setRepoState('open'); setRview('files'); }
+
+/* ---------- repo window: Export & restore ---------- */
+function renderExport() {
+  const x = $('#viewExport'); x.innerHTML = '';
+  const wrap = el('div', 'exp');
+  const runs = st.exp ? st.exp.runs.length : 0;
+  const stats = el('dl', 'stats');
+  [['Commits', st.commits.length], ['Runs', runs], ['Prompt versions', st.head ? st.head.version : 0], ['Branches', st.branches.length], ['Artifacts', artifacts().length], ['Spend', usd(st.spend)]].forEach(([k, v]) => { const d = el('div'); d.append(el('dt', null, k), el('dd', null, String(v))); stats.appendChild(d); });
+  wrap.appendChild(stats);
+  const card = (title, text, ...kids) => { const c = el('div', 'card'); c.appendChild(el('h4', null, title)); if (text) c.appendChild(el('p', null, text)); kids.forEach((k) => c.appendChild(k)); wrap.appendChild(c); return c; };
+  const row = (...k) => { const r = el('div', 'row'); k.forEach((n) => r.appendChild(n)); return r; };
+  const zipB = el('button', 'btn sm primary', 'Download repo as .zip'); zipB.type = 'button'; zipB.addEventListener('click', () => showPackage('zip'));
+  const bunB = el('button', 'btn sm', 'Download git bundle'); bunB.type = 'button'; bunB.addEventListener('click', () => showPackage('bundle'));
+  card('Share a copy', 'The .zip holds the files plus the .git folder, so anyone can read it by hand or run git on it. The bundle is one file that holds every commit and branch; clone it like a remote.', row(zipB, bunB));
+  const remote = el('input'); remote.type = 'text'; remote.id = 'remoteUrl'; remote.placeholder = 'git@github.com:you/experiments.git'; remote.setAttribute('aria-label', 'Remote repository URL');
+  const pushB = el('button', 'btn sm', 'Push'); pushB.type = 'button'; pushB.disabled = true; pushB.title = 'Available when the backend exists';
+  card('Push to a remote', 'Pushes every branch so the history lives outside the server. Use a private repo with force-push blocked so it stays append-only.', row(remote, pushB));
+  const file = el('input'); file.type = 'file'; file.id = 'restoreFile'; file.accept = '.zip,.bundle'; file.setAttribute('aria-label', 'Choose a .zip or .bundle to restore');
+  file.addEventListener('change', () => { if (file.files[0]) toast(`${file.files[0].name}: restoring opens it as a new experiment with its full history, tabs and settings. This arrives with the backend.`); });
+  card('Restore a shared experiment', 'Open a .zip or .bundle someone sent you. It becomes a new experiment you can replay, branch or keep running.', file);
+  const tbl = el('table', 'tbl');
+  tbl.innerHTML = '<thead><tr><th>Tab</th><th>Runs</th><th>Tokens</th><th>Cost</th><th>Artifacts</th></tr></thead>';
+  const tb = el('tbody');
+  st.tabs.forEach((t) => {
+    const tok = t.runs.reduce((a, r) => a + r.tokOut + r.tokThinkCharged, 0);
+    const arts = t.runs.filter((r) => r.resp.art || r.resp.artifact).length;
+    const tr = el('tr'); [`${pad(t.id)} ${tabLabel(t)}${isFree(t) ? ' (free)' : ''}`, t.runs.length, Math.round(tok).toLocaleString(), usd(t.spent), arts].forEach((v) => tr.appendChild(el('td', null, String(v)))); tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  const first = st.commits[st.commits.length - 1], last = st.commits.find((c) => c.snap);
+  const cmds = el('pre', 'cmds', `git log --oneline --stat\ngit diff ${first ? first.sha : '<a>'} ${last ? last.sha : '<b>'} -- prompt.md harness.yaml\ngit show HEAD:runs/${pad(Math.max(1, runs))}/01-*/response.md\ngit checkout -b retry ${last ? last.sha : '<sha>'}`);
+  card('Analyse', 'Per-tab totals for this experiment, and the git commands that answer most questions about it.', tbl, cmds);
+  x.appendChild(wrap);
+}
+function showPackage(kind) {
+  if (!st.exp) { toast('Send a prompt first.'); return; }
+  const name = st.exp.dir.replace('experiments/', '').replace(/\/$/, '');
+  const L = [kind === 'zip' ? `${name}.zip` : `${name}.bundle`];
+  if (kind === 'zip') {
+    L.push(`└── ${name}/`, '    ├── .git/            full history: every commit and branch');
+    const paths = [...st.files.keys()].sort();
+    const top = paths.filter((p) => !p.includes('/'));
+    top.forEach((p) => L.push(`    ├── ${p}`));
+    L.push(`    └── runs/            ${st.exp.runs.length} runs · ${paths.length - top.length} files · ${artifacts().length} artifacts`);
+  } else {
+    L.push(`one file · ${st.commits.length} commits · branches: ${st.branches.join(', ')}`);
+  }
+  $('#sheetTitle').textContent = kind === 'zip' ? 'Repo as .zip' : 'Git bundle';
+  $('#sheetIntro').textContent = kind === 'zip'
+    ? 'In the PoC this downloads the experiment folder with its .git directory. Text files are Markdown; history is append-only. This viewer blocks downloads, so the contents are listed here.'
+    : 'In the PoC this downloads a git bundle (made with git bundle create --all). It is the easiest way to send the whole history in one file. This viewer blocks downloads, so the contents are listed here.';
+  $('#sheetTree').textContent = L.join('\n');
+  $('#sheetCmds').textContent = kind === 'zip'
+    ? `unzip ${name}.zip && cd ${name}\ngit log --oneline\ngit diff HEAD~3 -- prompt.md harness.yaml`
+    : `git clone ${name}.bundle ${name}\ncd ${name} && git branch -a\ngit log --oneline --all --graph`;
+  $('#sheet').hidden = false; $('#sheetClose').focus();
+}
+$('#sheetClose').addEventListener('click', () => { $('#sheet').hidden = true; });
+$('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') e.target.hidden = true; });
+$('#sheetCopy').addEventListener('click', () => navigator.clipboard.writeText($('#sheetTree').textContent + '\n\n' + $('#sheetCmds').textContent).then(() => toast('Copied'), () => toast('Copy was blocked here. Select the text instead.')));
+
+/* ---------- repo window: tabs, drag, resize, minimize, close ---------- */
+function setRview(v) {
+  st.rview = v;
+  document.querySelectorAll('.rtabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === v)));
+  $('#viewChanges').hidden = v !== 'changes'; $('#viewFiles').hidden = v !== 'files'; $('#viewExport').hidden = v !== 'export';
+  if (v === 'files') renderFiles();
+  if (v === 'export') renderExport();
+}
+document.querySelectorAll('.rtabs button').forEach((b) => b.addEventListener('click', () => setRview(b.dataset.view)));
+function setRepoState(s) {
+  st.repo = s;
+  repoEl.hidden = s !== 'open';
+  $('#repoBtn').setAttribute('aria-pressed', String(s === 'open'));
+  const dock = $('#dock'); dock.innerHTML = '';
+  if (s === 'min') {
+    const b = el('button'); b.type = 'button'; b.append(el('span', 'dot'), document.createTextNode(`Experiment repo · ${st.commits.length} commits`));
+    b.querySelector('.dot').style.background = 'var(--k-run)';
+    b.addEventListener('click', () => setRepoState('open'));
+    dock.appendChild(b);
+  }
+  dock.hidden = s !== 'min';
+}
+$('#repoClose').addEventListener('click', () => setRepoState('closed'));
+$('#repoMin').addEventListener('click', () => setRepoState('min'));
+$('#repoMax').addEventListener('click', () => repoEl.classList.toggle('max'));
+$('#repoBtn').addEventListener('click', () => setRepoState(st.repo === 'open' ? 'closed' : 'open'));
+$('#exportBtn').addEventListener('click', () => { setRepoState('open'); setRview('export'); });
+(() => {
+  const bar = $('#repoBar'), desk = $('#desktop');
+  let drag = null;
+  bar.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || repoEl.classList.contains('max') || window.innerWidth < 720) return;
+    const r = repoEl.getBoundingClientRect();
+    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    bar.setPointerCapture(e.pointerId);
+  });
+  bar.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const d = desk.getBoundingClientRect(), r = repoEl.getBoundingClientRect();
+    repoEl.style.left = Math.min(Math.max(0, e.clientX - d.left - drag.dx), d.width - r.width) + 'px';
+    repoEl.style.top = Math.min(Math.max(0, e.clientY - d.top - drag.dy), d.height - 36) + 'px';
+  });
+  bar.addEventListener('pointerup', () => { drag = null; });
+  bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) repoEl.classList.toggle('max'); });
+})();
+function placeRepo() {
+  const d = $('#desktop').getBoundingClientRect();
+  const w = Math.min(440, d.width - 40), h = Math.max(260, Math.min(580, d.height - 200));
+  Object.assign(repoEl.style, { width: w + 'px', height: h + 'px', left: Math.max(16, d.width - w - 34) + 'px', top: '172px' });
 }
 
 /* ---------- tabs and panes ---------- */
@@ -709,7 +1030,7 @@ function closeTab(t) {
 function buildPane(t) {
   const s = el('section', 'pane');
   s.innerHTML = `
-    <div class="pane-head"><span class="dot"></span><span class="who"></span><span class="ep"></span><button class="tool" type="button" data-act="trace" aria-expanded="false">Trace</button></div>
+    <div class="pane-head"><span class="dot"></span><span class="who"></span><span class="ep"></span><span class="badge" hidden></span><button class="tool" type="button" data-act="trace" aria-expanded="false">Trace</button></div>
     <div class="page">
       <div class="ptop"></div>
       <div class="thread"><div class="greet"></div></div>
@@ -721,7 +1042,7 @@ function buildPane(t) {
     </div>
     <footer class="wstatus"><span class="st"></span><span class="tok"></span><span class="usd"></span><span class="dur"></span></footer>`;
   t.el = s;
-  t.r = { who: $('.who', s), ep: $('.ep', s), page: $('.page', s), ptop: $('.ptop', s), thread: $('.thread', s), greet: $('.greet', s), mirror: $('.mirror', s), opts: $('.opts', s),
+  t.r = { who: $('.who', s), ep: $('.ep', s), badge: $('.badge', s), page: $('.page', s), ptop: $('.ptop', s), thread: $('.thread', s), greet: $('.greet', s), mirror: $('.mirror', s), opts: $('.opts', s),
     trace: $('.trace', s), traceQ: $('.trace-head input', s), traceList: $('.trace-list', s), traceCount: $('.trace-count', s),
     st: $('.wstatus .st', s), tok: $('.wstatus .tok', s), usd: $('.wstatus .usd', s), dur: $('.wstatus .dur', s) };
   t.r.page.dataset.skin = t.p.skin;
@@ -743,7 +1064,7 @@ function buildControls(t) {
     const keep = m.reason && m.reason.opts && m.reason.opts.includes(t.reason);
     t.model = m; t.reason = keep ? t.reason : (m.reason && m.reason.def) || null;
     log(t, 'option', `Model set to ${m.id}`);
-    buildControls(t); refreshTab(t); renderWorking();
+    buildControls(t); refreshTab(t); renderWorking(); paintBudget();
   });
   t.r.ptop.innerHTML = ''; t.r.opts.innerHTML = '';
   if (t.p.picker === 'top') t.r.ptop.appendChild(sel);
@@ -770,6 +1091,12 @@ function buildControls(t) {
   const send = el('span', 'senddot', '↑'); send.setAttribute('aria-hidden', 'true'); t.r.opts.appendChild(send);
 }
 function paintMcpChip(t) { const n = [...st.mcp]; t.r.mcpChip.hidden = !n.length; t.r.mcpChip.textContent = `MCP · ${n.join(', ')}`; }
+function paintBadge(t) {
+  const b = t.r.badge;
+  if (isFree(t)) { b.hidden = false; b.className = 'badge free'; b.textContent = '$0 · not limited by the cap'; }
+  else if (capReached()) { b.hidden = false; b.className = 'badge paused'; b.textContent = 'paused by spend cap'; }
+  else b.hidden = true;
+}
 
 function refreshTab(t) {
   t.el.dataset.status = t.status;
@@ -779,16 +1106,16 @@ function refreshTab(t) {
     t.r.greet.innerHTML = ''; t.r.greet.append(document.createTextNode(t.p.greet()));
     if (t.pid === 'open') t.r.greet.appendChild(el('small', null, t.model.label));
   }
-  paintStats(t); renderTabs();
+  paintBadge(t); paintStats(t); renderTabs();
 }
 function paintStats(t) {
   const words = { idle: 'Ready', run: t.cur && t.cur.phase === 'think' ? 'Thinking' : 'Responding', done: 'Done', stop: 'Stopped' };
   t.r.st.textContent = words[t.status];
   const tot = t.runs.reduce((a, x) => ({ i: a.i + x.tokIn, o: a.o + x.tokOut + x.tokThinkCharged }), { i: 0, o: 0 });
   t.r.tok.textContent = `${tot.i} in · ${Math.round(tot.o)} out`;
-  t.r.usd.textContent = usd(t.spent);
+  t.r.usd.textContent = isFree(t) ? '$0 (free)' : usd(t.spent);
   const last = t.runs[t.runs.length - 1];
-  t.r.dur.textContent = last ? (((last.t1 || Date.now()) - last.t0) / 1000).toFixed(1) + 's' : '';
+  t.r.dur.textContent = last && last.t0 ? (((last.t1 || Date.now()) - last.t0) / 1000).toFixed(1) + 's' : '';
 }
 
 function renderTabs() {
@@ -805,8 +1132,14 @@ function renderTabs() {
     v.append(main, x); tabsEl.appendChild(v);
   });
   $('#newTab').textContent = `+ New tab ${st.tabs.length}/${MAX_TABS}`;
-  const n = st.tabs.length;
-  sendBtn.firstChild.textContent = `Send to ${n} tab${n === 1 ? '' : 's'} `;
+  paintSendLabel();
+}
+function paintSendLabel() {
+  const n = st.tabs.length, free = st.tabs.filter(isFree).length;
+  const capped = capReached() && n > free;
+  const k = capped ? free : n;
+  sendBtn.firstChild.textContent = `Send to ${k}${capped ? ' free' : ''} tab${k === 1 ? '' : 's'} `;
+  sendBtn.title = capped ? `${n - free} paid tab(s) are paused by the spend cap` : '';
 }
 
 function layout() {
@@ -847,7 +1180,7 @@ function openNewTab(anchor) {
   else PROVIDER_ORDER.forEach((pid) => {
     const p = PROVIDERS[pid];
     const b = el('button', 'item'); b.type = 'button'; b.setAttribute('role', 'menuitem');
-    const t = el('span'); t.append(el('span', null, p.name), el('small', null, p.models.map((m) => m.label.split(' · ')[0]).join(', ')));
+    const t = el('span'); t.append(el('span', null, p.name + (pid === 'open' ? ' · free locally' : '')), el('small', null, p.models.map((m) => m.label.split(' · ')[0]).join(', ')));
     b.append(el('span', 'fav', p.fav), t);
     b.addEventListener('click', () => { closePop(); addTab(pid); });
     pop.appendChild(b);
@@ -876,7 +1209,7 @@ function openMcp(anchor) {
 $('#newTab').addEventListener('click', (e) => { e.stopPropagation(); if (pop && pop.dataset.for === 'new') closePop(); else openNewTab(e.currentTarget); });
 $('#mcpBtn').addEventListener('click', (e) => { e.stopPropagation(); if (pop && pop.dataset.for === 'mcp') closePop(); else openMcp(e.currentTarget); });
 document.addEventListener('click', (e) => { if (pop && !pop.contains(e.target)) closePop(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePop(); $('#exportOverlay').hidden = true; } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePop(); $('#sheet').hidden = true; } });
 
 /* ---------- broadcast ---------- */
 function syncMirror() {
@@ -892,49 +1225,65 @@ function send(text, instant = false) {
   text = (text || workingPrompt()).trim();
   if (!text) { promptEl.focus(); toast('Type a prompt first.'); return; }
   if (st.running) { toast('Wait for this run to finish, or press Stop all.'); return; }
-  if (st.tripped) { toast('Spend cap reached. Raise the cap in the menu bar to send again.'); return; }
   if (!st.tabs.length) { toast('Open a tab first.'); return; }
+  const runnable = st.tabs.filter((t) => isFree(t) || !capReached());
+  if (!runnable.length) { toast('The spend cap is reached and every open tab is paid. Raise the cap, or open a free tab (Open models · Ollama).'); return; }
   if (instant) promptEl.value = text;
   const changes = changesSince();
   const ts = stamp();
-  if (!st.exp) st.exp = { dir: `experiments/${ts.iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}-${slugify(text)}/`, runs: [] };
+  if (!st.exp) { st.exp = { dir: `experiments/${ts.iso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}-${slugify(text)}/`, runs: [] }; putFile('README.md', README(slugify(text))); }
   st.runNo++;
   const runDir = `runs/${pad(st.runNo)}/`;
   if (changes.length) {
     const files = workingFiles();
     files.push({ name: 'ledger.jsonl', note: `+1 line · run ${pad(st.runNo)}` });
-    const c = addCommit({ kind: kindOf(changes), title: titleOf(changes), changes, files, ts, open: true });
-    st.commits.forEach((x) => { if (x !== c && x.open) { x.open = false; paintCommit(x); } });
     const version = text !== st.head.prompt ? st.head.version + 1 : st.head.version;
+    const c = addCommit({ kind: kindOf(changes), title: titleOf(changes), changes, files, ts, open: true, snap: snapshot(), prompt: text });
+    st.commits.forEach((x) => { if (x !== c && x.open) { x.open = false; paintCommit(x); } });
     st.head = { prompt: text, version, yaml: toYaml(snapshot()), snap: snapshot() };
+    putFile('prompt.md', promptMd(text, version)); putFile('harness.yaml', st.head.yaml);
   } else {
     const n = (st.takes[st.head.version] = (st.takes[st.head.version] || 1) + 1);
     addCommit({ kind: 'rerun', title: `You re-ran prompt v${st.head.version} with no changes (take ${n})`, files: [], ts });
   }
   const run = { no: st.runNo, dir: runDir, prompt: text, version: st.head.version, ts, tabs: [] };
   st.exp.runs.push(run);
+  ledger({ event: 'run', run: st.runNo, prompt_version: run.version, prompt: text, models: st.tabs.map((t) => t.model.id) }, ts);
   promptEl.value = ''; syncMirror();
-  st.running += st.tabs.length; stopBtn.hidden = false; sendBtn.disabled = true;
-  st.tabs.forEach((t, i) => startRun(t, run, i + 1, instant));
-  renderWorking();
+  st.running += runnable.length; stopBtn.hidden = false; sendBtn.disabled = true;
+  st.tabs.forEach((t, i) => (runnable.includes(t) ? startRun(t, run, i + 1, instant) : skipRun(t, run)));
+  renderWorking(); refreshRepoViews();
 }
+function ledger(obj, ts = stamp()) {
+  st.ledger.push(JSON.stringify({ unix: ts.unix, iso: ts.iso, human: ts.human, ...obj }));
+  putFile('ledger.jsonl', st.ledger.join('\n'));
+}
+function refreshRepoViews() { if (st.rview === 'files') renderFiles(); if (st.rview === 'export') renderExport(); else $('#artCount').textContent = String(artifacts().length); }
 
 function makeReply(t, text) {
   const s = SAMPLE[text] && SAMPLE[text][t.pid];
-  if (s) return { ...s, artifact: null };
+  if (s) return { ...s };
   const h = hash(text + t.model.id + t.runs.length);
   const q = text.length > 90 ? text.slice(0, 87) + '…' : text;
   const pts = []; let k = h;
   while (pts.length < 3) { const p = POINTS[k % POINTS.length]; if (!pts.includes(p)) pts.push(p); k = Math.floor(k / 7) + 13; }
   const open = { anthropic: `Here's how I'd approach “${q}”.`, openai: `A quick take on “${q}”:`, gemini: `Let's break down “${q}”.`, xai: `Straight answer on “${q}”:`, open: `Answering “${q}” with ${t.model.id}.` }[t.pid];
-  let md = `${open}\n\n- ${pts.join('\n- ')}\n\n`, artifact = null;
-  if (/\b(game|html|code|script|function|app|component|svg|css|python|js|page)\b/i.test(text)) {
-    const src = `<!doctype html>\n<title>${slugify(text)}</title>\n<canvas id="c" width="320" height="200"></canvas>\n<script>\n  // simulated artifact from ${t.model.id}\n  c.getContext('2d').fillText('${t.p.name} · ${t.model.id}', 20, 100);\n<\/script>`;
-    md += '```html\n' + src + '\n```\n\n';
-    artifact = { name: 'artifact-01.html', bytes: new Blob([src]).size };
+  const md = `${open}\n\n- ${pts.join('\n- ')}\n\nSimulated reply. In the PoC this pane shows ${t.model.id}'s real answer from ${t.model.host || t.p.endpoint}.`;
+  let art = null;
+  if (/\b(game|html|code|script|function|app|component|svg|css|calculator|page|widget)\b/i.test(text)) {
+    art = `<!doctype html><meta charset="utf-8"><title>${esc(slugify(text))}</title><style>body{font:14px system-ui;margin:16px}</style><p>Simulated artifact from <b>${esc(t.model.id)}</b> for:</p><blockquote>${esc(q)}</blockquote><button onclick="this.textContent='clicked '+(++this.n||(this.n=1))+'x'">Click me</button>`;
   }
-  md += `Simulated reply. In the PoC this pane shows ${t.model.id}'s real answer from ${t.model.host || t.p.endpoint}.`;
-  return { md, thought: `Asked: “${q}”. ${THOUGHTS[h % THOUGHTS.length]}`, artifact };
+  return { md, thought: `Asked: “${q}”. ${THOUGHTS[h % THOUGHTS.length]}`, art };
+}
+
+function skipRun(t, run) {
+  t.r.greet.remove();
+  t.r.thread.append(el('div', 'rundiv', `Run ${run.no} · prompt v${run.version} · not sent`), el('div', 'msg-user', run.prompt),
+    el('div', 'notice', `Not sent: the spend cap ($${st.cap.toFixed(2)}) is reached and this tab costs money. Free tabs still ran. Raise the cap to include it.`));
+  t.r.thread.scrollTop = t.r.thread.scrollHeight;
+  t.status = 'stop'; t.cur = null; refreshTab(t);
+  log(t, 'skipped', `Run ${run.no} not sent: spend cap reached`);
+  addCommit({ kind: 'stop', title: `${tabLabel(t)} skipped run ${run.no} · spend cap reached · nothing sent`, files: [] });
 }
 
 function startRun(t, run, idx, instant) {
@@ -944,7 +1293,7 @@ function startRun(t, run, idx, instant) {
   const mcp = [...st.mcp];
   const r = { run, idx, prompt: run.prompt, t0: Date.now(), t1: 0, think, thinkMs: think ? jitter((m.think || 2000) * mult, h) : 0, resp, words: resp.md.match(/\S+\s*/g) || [], shown: 0,
     tokIn: estTok(run.prompt) + 38 + mcp.length * 220, tokOut: 0, tokThink: think ? Math.round(jitter((m.think || 2000) * mult, h >> 3) * 0.9) : 0, tokThinkCharged: 0, cost: 0, state: 'run', phase: think ? 'think' : 'text',
-    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/` };
+    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/`, traceFrom: t.trace.length };
   run.tabs.push({ t, r });
   t.runs.push(r); t.cur = r;
   t.r.greet.remove();
@@ -971,7 +1320,7 @@ function startRun(t, run, idx, instant) {
   charge(t, r, r.tokIn * m.in / 1e6);
   if (r.state !== 'run') return;
   if (instant) {
-    r.shown = r.words.length; r.tokOut = estTok(resp.md); r.tokThinkCharged = r.tokThink;
+    r.shown = r.words.length; r.tokOut = estTok(resp.md) + (resp.art ? Math.round(resp.art.length / 3.5) : 0); r.tokThinkCharged = r.tokThink;
     const c = (r.tokOut + r.tokThink) * m.out / 1e6; t.spent += c; r.cost += c; st.spend += c;
     r.t1 = r.t0 + r.thinkMs + Math.round(r.words.length / m.wps * 1000);
     finishRun(t, r); return;
@@ -1017,29 +1366,41 @@ function stream(t, r) {
   }, 1000 / fps);
 }
 function charge(t, r, amount) {
+  if (!(amount > 0)) return;
+  const was = capReached();
   st.spend += amount; t.spent += amount; r.cost += amount;
   paintBudget();
-  if (!st.tripped && st.spend >= st.cap) trip();
+  if (!was && capReached()) trip();
 }
 function finishRun(t, r) {
   r.state = 'done'; r.phase = 'done';
   r.el.body.classList.remove('cursor');
   r.el.body.innerHTML = renderMd(r.resp.md);
   if (r.el.thought) { r.el.thought.classList.remove('live'); r.el.thought.setAttribute('aria-expanded', 'false'); setThoughtLabel(t, r); }
-  if (r.resp.artifact) { const a = el('div', 'artifact'); a.append(el('b', null, r.resp.artifact.name), el('span', null, `HTML · ${r.resp.artifact.bytes.toLocaleString()} bytes · saved to repo`)); r.el.ai.appendChild(a); }
+  const files = [{ name: r.dir + 'response.md', before: null, after: r.resp.md + (r.resp.art ? '\n\n[artifact: artifacts/artifact-01.html]' : '') }];
+  putFile(r.dir + 'response.md', files[0].after);
+  if (r.think && !(t.model.reason && t.model.reason.hiddenThinking)) { files.push({ name: r.dir + 'thinking.md', before: null, after: r.resp.thought }); putFile(r.dir + 'thinking.md', r.resp.thought); }
+  if (r.resp.art) {
+    const ap = r.dir + 'artifacts/artifact-01.html', size = new Blob([r.resp.art]).size;
+    putFile(ap, r.resp.art); st.files.get(ap).label = `Run ${r.run.no} · ${tabLabel(t)}`;
+    const a = el('div', 'artifact'); const pv = el('button', null, 'Preview'); pv.type = 'button'; pv.addEventListener('click', () => openFile(ap));
+    a.append(el('b', null, 'artifact-01.html'), el('span', 'meta', `HTML · ${bytes(size)} · saved to repo`), pv);
+    r.el.ai.appendChild(a);
+    files.push({ name: ap, note: `new file · ${bytes(size)}` });
+  }
   const tools = el('div', 'msg-tools');
   const copy = el('button', null, 'Copy'); copy.type = 'button';
   copy.addEventListener('click', () => navigator.clipboard.writeText(r.resp.md).then(() => toast('Reply copied'), () => toast('Copy was blocked here. Select the text instead.')));
-  tools.append(copy, el('span', null, `${Math.round(r.tokOut)} tokens · ${usd(r.cost)}`));
+  tools.append(copy, el('span', null, `${Math.round(r.tokOut)} tokens · ${isFree(t) ? '$0 (free)' : usd(r.cost)}`));
   r.el.ai.appendChild(tools);
   t.status = 'done'; refreshTab(t);
   log(t, 'done', `${Math.round(r.tokOut)} output tokens · ${usd(r.cost)}`);
   log(t, 'screenshot', 'Saved screenshot.png of this pane');
-  const files = [{ name: r.dir + 'response.md', before: null, after: r.resp.md }];
-  if (r.think && !(t.model.reason && t.model.reason.hiddenThinking)) files.push({ name: r.dir + 'thinking.md', before: null, after: r.resp.thought });
-  files.push({ name: r.dir + 'trace.jsonl', note: `new file · ${t.trace.length} events` }, { name: r.dir + 'screenshot.png', note: 'new file · image' });
-  if (r.resp.artifact) files.push({ name: r.dir + 'artifacts/' + r.resp.artifact.name, note: `new file · ${r.resp.artifact.bytes} bytes` });
-  Object.assign(r.commit, { kind: 'run', title: `${tabLabel(t)} replied · ${Math.round(r.tokOut + r.tokThink)} tokens · ${usd(r.cost)} · ${((r.t1 - r.t0) / 1000).toFixed(1)}s`, files, ts: stamp() });
+  const traceLines = t.trace.slice(r.traceFrom).map((e) => JSON.stringify({ iso: new Date(e.t).toISOString(), type: e.type, detail: e.detail })).join('\n');
+  putFile(r.dir + 'trace.jsonl', traceLines); putFile(r.dir + 'screenshot.png', '', 'png');
+  files.push({ name: r.dir + 'trace.jsonl', note: `new file · ${t.trace.length - r.traceFrom} events` }, { name: r.dir + 'screenshot.png', note: 'new file · image' });
+  ledger({ event: 'reply', run: r.run.no, tab: pad(t.id), model: t.model.id, tokens: Math.round(r.tokOut + r.tokThink), cost_usd: +r.cost.toFixed(5), outputs: files.map((f) => f.name) });
+  Object.assign(r.commit, { kind: 'run', title: `${tabLabel(t)} replied · ${Math.round(r.tokOut + r.tokThink)} tokens · ${isFree(t) ? '$0' : usd(r.cost)} · ${((r.t1 - r.t0) / 1000).toFixed(1)}s${r.resp.art ? ' · 1 artifact' : ''}`, files, ts: stamp() });
   paintCommit(r.commit);
   log(t, 'commit', `${r.commit.sha} ${r.dir}`);
   endOne();
@@ -1050,37 +1411,42 @@ function stopRun(t, why) {
   r.state = 'stop'; r.t1 = Date.now();
   r.el.body.classList.remove('cursor');
   if (r.el.thought && r.phase === 'think') { r.el.thought.classList.remove('live'); r.el.thought.textContent = 'Thinking stopped'; }
-  const reason = { cap: `Stopped by the spend cap (${usd(st.spend)} of ${usd(st.cap)}). The partial reply was saved.`, user: 'Stopped from the harness. The partial reply was saved.', closed: 'Tab closed while replying. The partial reply was saved.' }[why];
+  const reason = { cap: `Stopped by the spend cap (${usd(st.spend)} of ${usd(st.cap)}). The partial reply was saved. Free tabs keep running.`, user: 'Stopped from the harness. The partial reply was saved.', closed: 'Tab closed while replying. The partial reply was saved.' }[why];
   r.el.ai.appendChild(el('div', 'notice', reason));
   t.status = 'stop'; refreshTab(t);
   log(t, 'stopped', reason);
-  const partial = r.words.slice(0, r.shown).join('');
-  Object.assign(r.commit, { kind: 'stop', title: `${tabLabel(t)} stopped (${why === 'cap' ? 'spend cap' : why}) · partial reply saved`, files: [{ name: r.dir + 'response.md', before: null, after: partial || '(no text yet)' }, { name: r.dir + 'trace.jsonl', note: `new file · ${t.trace.length} events` }], ts: stamp() });
+  const partial = r.words.slice(0, r.shown).join('') || '(no text yet)';
+  putFile(r.dir + 'response.md', partial);
+  Object.assign(r.commit, { kind: 'stop', title: `${tabLabel(t)} stopped (${why === 'cap' ? 'spend cap' : why}) · partial reply saved`, files: [{ name: r.dir + 'response.md', before: null, after: partial }], ts: stamp() });
   paintCommit(r.commit);
   endOne();
 }
 function endOne() {
   st.running = Math.max(0, st.running - 1);
-  if (!st.running) { stopBtn.hidden = true; sendBtn.disabled = false; }
+  if (!st.running) { stopBtn.hidden = true; sendBtn.disabled = false; refreshRepoViews(); }
 }
-function trip() {
-  st.tripped = true;
-  st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run') stopRun(t, 'cap'); });
-  const bar = $('#capbar');
-  bar.textContent = `Spend cap reached at ${usd(st.spend)} of ${usd(st.cap)}. Running tabs were stopped and their partial replies committed. Raise the cap in the menu bar to send again.`;
-  bar.hidden = false;
-}
+function trip() { st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run' && !isFree(t)) stopRun(t, 'cap'); }); }
 function paintBudget() {
   $('#spent').textContent = usd(st.spend);
-  const pct = Math.min(100, (st.spend / st.cap) * 100);
+  const reached = capReached();
+  const pct = st.cap > 0 ? Math.min(100, (st.spend / st.cap) * 100) : 100;
   $('#meterFill').style.width = pct + '%';
-  $('#budget').dataset.level = pct >= 100 ? 'over' : pct >= 70 ? 'warn' : 'ok';
+  $('#budget').dataset.level = reached ? 'over' : pct >= 70 ? 'warn' : 'ok';
+  const bar = $('#capbar');
+  bar.hidden = !reached;
+  bar.textContent = st.cap === 0
+    ? 'Spend cap is $0.00. Only free tabs run (local open models through Ollama, or a free tier). Paid tabs are paused; raise the cap to include them.'
+    : `Spend cap reached at ${usd(st.spend)} of ${usd(st.cap)}. Paid tabs are paused and any partial replies were committed. Free tabs (local open models) still run. Raise the cap to resume paid tabs.`;
+  st.tabs.forEach(paintBadge);
+  paintSendLabel();
 }
 $('#cap').addEventListener('change', (e) => {
   const v = parseFloat(e.target.value);
-  if (!(v > 0)) { e.target.value = st.cap.toFixed(2); return; }
+  if (!(v >= 0)) { e.target.value = st.cap.toFixed(2); return; }
+  const was = capReached();
   st.cap = v; paintBudget(); renderWorking();
-  if (st.tripped && st.spend < st.cap) { st.tripped = false; $('#capbar').hidden = true; toast(`Cap raised to ${usd(v)}. You can send again.`); }
+  if (capReached()) trip();
+  else if (was) toast(`Cap raised to ${usd(v)}. Paid tabs can run again.`);
 });
 
 /* ---------- trace ---------- */
@@ -1094,67 +1460,29 @@ function renderTrace(t) {
   t.r.traceList.scrollTop = t.r.traceList.scrollHeight;
 }
 
-/* ---------- repo toggle + export ---------- */
-function setRepo(open) { $('#repo').hidden = !open; $('#repoBtn').setAttribute('aria-pressed', String(open)); layout(); }
-$('#repoBtn').addEventListener('click', () => setRepo($('#repo').hidden));
-$('#repoClose').addEventListener('click', () => setRepo(false));
-$('#exportBtn').addEventListener('click', () => {
-  if (!st.exp) { toast('Send a prompt first.'); return; }
-  const L = [st.exp.dir];
-  [['README.md', 'how to read, replay and restore this package'], ['harness.yaml', 'tabs, models, effort, tools, MCP servers, cap'], ['prompt.md', 'the current prompt; older versions are in git history'], ['manifest.json', 'runs, tokens, cost, commit shas, timestamps'], ['ledger.jsonl', 'one line per event (unix, ISO, human time)'], ['git-log.md', 'commit history at export time']].forEach(([f, d]) => L.push(`├── ${f.padEnd(14)} ${d}`));
-  L.push('└── runs/');
-  st.exp.runs.forEach((run, ri) => {
-    const lastRun = ri === st.exp.runs.length - 1, b1 = lastRun ? '    └── ' : '    ├── ', s1 = lastRun ? '        ' : '    │   ';
-    L.push(`${b1}${pad(run.no)}/   prompt v${run.version} · ${run.ts.human}`);
-    run.tabs.forEach(({ t, r }, i) => {
-      const last = i === run.tabs.length - 1;
-      L.push(s1 + (last ? '└── ' : '├── ') + r.dir.split('/').slice(-2, -1)[0] + '/');
-      const files = ['response.md'];
-      if (r.think && !(t.model.reason && t.model.reason.hiddenThinking)) files.push('thinking.md');
-      files.push('trace.jsonl', 'screenshot.png');
-      if (r.resp.artifact) files.push('artifacts/' + r.resp.artifact.name);
-      L.push(s1 + (last ? '    ' : '│   ') + '    ' + files.join(' · '));
-    });
-  });
-  $('#exportTree').textContent = L.join('\n');
-  $('#exportFiles').textContent = promptMd(st.head.prompt, st.head.version) + '\n\n' + st.head.yaml;
-  const zip = st.exp.dir.replace('experiments/', '').replace(/\/$/, '') + '.zip';
-  $('#exportIntro').textContent = `In the PoC this downloads ${zip}. Text files are Markdown so you can read them by hand; the folder is also the git repo you see in the Repo panel, so it can be forked, branched or restored later. This viewer blocks downloads, so the contents are listed here.`;
-  $('#exportOverlay').hidden = false; $('#closeExport').focus();
-});
-$('#closeExport').addEventListener('click', () => { $('#exportOverlay').hidden = true; });
-$('#exportOverlay').addEventListener('click', (e) => { if (e.target.id === 'exportOverlay') e.target.hidden = true; });
-$('#copyExport').addEventListener('click', () => navigator.clipboard.writeText($('#exportTree').textContent).then(() => toast('Copied'), () => toast('Copy was blocked here. Select the text instead.')));
-
-/* ---------- desktop chrome ---------- */
-function setOS(os) {
-  document.documentElement.dataset.os = os;
-  $('#osMac').setAttribute('aria-pressed', String(os === 'mac'));
-  $('#osUbuntu').setAttribute('aria-pressed', String(os === 'ubuntu'));
-  $('#session').textContent = os === 'mac' ? 'vnc://harness-01 · macOS VM · tabs call provider APIs' : 'Activities · vnc://harness-02 · Ubuntu 24.04 VM · tabs call provider APIs';
-  try { localStorage.setItem('mai-os', os); } catch (e) {}
-}
-$('#osMac').addEventListener('click', () => setOS('mac'));
-$('#osUbuntu').addEventListener('click', () => setOS('ubuntu'));
 function tick() { $('#clock').textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 tick(); setInterval(tick, 20000);
 
-/* ---------- opening state: two runs that show each kind of change ---------- */
-let saved = 'mac'; try { saved = localStorage.getItem('mai-os') || 'mac'; } catch (e) {}
-setOS(saved);
+/* ---------- opening state: three runs that show each kind of change and the artifacts ---------- */
 addTab('anthropic', 'claude-opus-5-5', 'medium');
 addTab('openai', 'gpt-5', 'medium');
 addTab('gemini', 'gemini-2.5-pro', 'dynamic');
 st.head = { prompt: '', version: 0, yaml: '', snap: { cap: st.cap, tabs: [], mcp: [] } };
 const y0 = toYaml(snapshot());
-addCommit({ kind: 'init', title: 'You started the experiment with 3 tabs', files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }] });
+putFile('harness.yaml', y0);
+addCommit({ kind: 'init', title: 'You started the experiment with 3 tabs', files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }], snap: snapshot(), prompt: '' });
 st.head = { prompt: '', version: 0, yaml: y0, snap: snapshot() };
 send(V1, true);
 st.tabs[0].reason = 'high'; buildControls(st.tabs[0]);
 st.mcp.add('filesystem'); st.tabs.forEach(paintMcpChip); $('#mcpCount').textContent = '1';
 send(V2, true);
+addTab('open', 'qwen3:8b');
+send(V3, true);
 st.active = st.tabs[0].id;
-paintBudget(); syncMirror(); renderWorking();
-if (window.innerWidth < 1100) setRepo(false); else layout();
+st.openFile = artifacts()[0] || null;
+paintBudget(); syncMirror(); renderWorking(); layout();
+placeRepo();
+setRepoState(window.innerWidth < 1000 ? 'closed' : 'open');
+setRview('changes');
 })();
 </script>

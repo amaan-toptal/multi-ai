@@ -179,3 +179,29 @@ Enter; tabs turn yellow then green and commits appear; click any commit to expan
    OpenAI-compatible for OpenAI / Groq / OpenRouter / Ollama, Gemini, xAI), `harness.yaml` + git per experiment, export zip.
 2. Strip seeded examples from the server at the same time (D-32).
 3. Later: agent tabs in containers, graders, pass@k / pass^k.
+
+---
+
+## Session 1, part 7 — 2026-10-04 — free models past the cap, floating repo window, artifacts, export (model: Opus 5.5)
+
+**Prompt:** [0012](prompts/0012-2026-10-04-free-models-floating-repo-artifacts.md)
+
+### What changed
+- Mockup (`docs/mockup/index.html`, same link https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx):
+  - spend cap applies to paid tabs only; free tabs (Ollama local, free tiers) run even at $0; paid tabs are skipped or
+    stopped with a note and a commit;
+  - macOS look only;
+  - repo is a floating window (drag, resize, maximize, minimize to dock, close, reopen) with Changes / Files & artifacts /
+    Export & restore views; HTML artifacts run inline; restore and branch from any user commit; .zip, git bundle, push,
+    restore and analyse controls.
+- spec v0.4, evals D-48…D-53, E-14, B-19…B-20, L-23…L-24.
+
+### How to verify
+Artifact → repo window → Files & artifacts → click an artifact and move its sliders. Set the cap to 0 in the menu bar, type a
+prompt, Enter: only the Open models tab runs. Expand a P/C/M commit → Restore this state or Branch from here. Minimize the
+repo window (yellow light) and bring it back from the dock.
+
+### Next steps
+1. Owner reviews; then backend on `poc/variant-windows` (provider adapters, harness.yaml + git per experiment, real zip and
+   bundle export, restore from bundle).
+2. Unchanged: agent tabs, graders, pass@k / pass^k; CI append-only verifier; block force pushes (owner TODO).

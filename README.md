@@ -80,7 +80,8 @@ The PoC branch (`poc/variant-windows`) is moving to one tab per provider API. Ke
 
 Put keys in the server's `.env` (never commit it): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`,
 `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OLLAMA_BASE_URL`. Set a spend limit in every provider console as well as the
-harness spend cap. Today's server still calls Anthropic only; the other providers arrive with the PoC backend.
+harness spend cap. The harness cap only limits paid tabs: free tabs (Ollama models, free tiers) keep running even with
+the cap at $0. Today's server still calls Anthropic only; the other providers arrive with the PoC backend.
 
 ## Hosting (GCP / AWS / DigitalOcean)
 

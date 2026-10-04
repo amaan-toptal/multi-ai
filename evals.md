@@ -287,3 +287,39 @@
   each call so differences are visible, but tool output is part of the variance.
 - **L-22 Comparing vendor CLIs compares products** (system prompt, tools, loop), not models; the agent-tab plan needs one
   shared loop for model comparisons.
+
+---
+
+## 2026-10-04 — session 1, part 7 (prompt 0012) — free models, floating repo window, artifacts, export
+
+### Decisions taken without asking
+- **D-48 "Free" is a property of the model, not the provider:** $0 input and output price. Ollama models are free; Groq
+  gpt-oss-120b is marked free tier; OpenRouter models stay paid. The answer to the owner's question is yes for local models,
+  and only on free tiers for hosted open models (which are rate-limited).
+- **D-49 A $0 cap means "paid tabs never run"**, not an error. Paid tabs show "paused by spend cap"; free tabs show
+  "$0 · not limited by the cap".
+- **D-50 Skipped paid tabs still get a commit** ("skipped run N · spend cap reached · nothing sent") so the repo shows which
+  variants were left out of a run.
+- **D-51 Restore loads a past state as unsent changes** instead of rewriting history; Branch does the same on a new branch
+  label. History stays append-only either way. Tabs missing from the current session are reopened with new ids.
+- **D-52 A third opening run (prompt v3) adds a tab (Open models · qwen3:8b) and asks for a small HTML calculator**, so the
+  opening state has four real, working artifacts to preview inline. Each computes pass@k and pass^k.
+- **D-53 Downloads are shown as a listing** of what the .zip or bundle would contain, because the artifact viewer blocks
+  downloads. Push and restore controls are present but marked as arriving with the backend.
+
+### Evaluations performed
+- **E-14 Headless Chromium run:** opening state has 4 green tabs, 14 commits, 4 artifacts; the Claude artifact runs in the
+  repo window's sandboxed frame and shows pass@k = 0.992, pass^k = 0.512 for p 0.8, k 3; setting the cap to $0 changes Send
+  to "Send to 1 free tab", the three paid tabs are skipped (red) and the Open models tab runs to green; minimize puts the
+  window in the dock and restores it; export view renders; 400 px dark has no horizontal scroll; no page errors.
+
+### Bugs found (fixed)
+- **B-19** The repo window opened over the toolbar's Repo and Export buttons; it now opens below the toolbar.
+- **B-20** The "not sent" note printed a $0 cap as "$0.0000"; now "$0.00".
+
+### Loopholes / risks
+- **L-23 Free tiers have rate limits and may change**; a tab marked free can start failing with 429s or begin charging. The
+  backend should read prices from config and show the provider's error, not assume $0 forever.
+- **L-24 Inline artifacts run model-written scripts.** The frame has `allow-scripts` without same-origin, so it can't touch
+  the harness's storage or keys, but it can still make network requests; the backend should serve artifacts from a separate
+  origin with a strict CSP.
