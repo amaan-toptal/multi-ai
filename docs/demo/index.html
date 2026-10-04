@@ -1,0 +1,514 @@
+<title>multi-ai Playground</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+/* Layout: app shell mirroring multi-ai v0.1 — composer on top, variant cards in a grid, workspace git log as a side rail. */
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --fg: #1f1e1b; --muted: #6e6c64; --line: #e2e0d8;
+  --accent: #b5573a; --accent-fg: #ffffff; --ok: #2f7a4d; --err: #b3261e; --soft: #f0eee7; --code: #efede6;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1a1a18; --panel: #232321; --fg: #ebe9e3; --muted: #9c9a92; --line: #393935;
+  --accent: #dc7f5e; --accent-fg: #1a1a18; --ok: #72c495; --err: #f28b82; --soft: #2b2a27; --code: #2d2c29; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1a1a18; --panel: #232321; --fg: #ebe9e3; --muted: #9c9a92; --line: #393935;
+  --accent: #dc7f5e; --accent-fg: #1a1a18; --ok: #72c495; --err: #f28b82; --soft: #2b2a27; --code: #2d2c29; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font-ui); padding-inline: 16px; padding-block: 0 32px; }
+a { color: var(--accent); }
+button { font: inherit; }
+button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 14px; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.demo-pill { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+.topbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.conn { border: 1px solid var(--ok); color: var(--ok); border-radius: 6px; padding: 4px 10px; font-size: 12.5px; }
+
+.shell { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; padding-top: 16px; }
+@media (max-width: 900px) { .shell { grid-template-columns: minmax(0, 1fr); } }
+.note { background: var(--soft); border-radius: 8px; padding: 10px 12px; color: var(--muted); font-size: 13px; max-width: 75ch; }
+
+.examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; color: var(--fg); }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.hint { min-height: 1.5em; margin: 8px 0; }
+textarea { width: 100%; resize: vertical; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: inherit; }
+.vhead { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; gap: 8px; flex-wrap: wrap; }
+.vhead h2 { font-size: 14px; margin: 0; }
+.variants { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.vrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.vrow .model { font-weight: 600; min-width: 0; }
+.tag { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+.vrow .price { margin-left: auto; font-variant-numeric: tabular-nums; }
+.runrow { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.btn { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.small { padding: 3px 9px; font-size: 12px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; margin-top: 18px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.card-title { font-weight: 600; min-width: 0; }
+.badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge.running { color: var(--accent); border-color: var(--accent); }
+.badge.done { color: var(--ok); border-color: var(--ok); }
+@media (prefers-reduced-motion: no-preference) { .badge.running { animation: pulse 1.3s infinite; } }
+@keyframes pulse { 50% { opacity: .45; } }
+details.thinking { background: var(--soft); border-radius: 8px; padding: 6px 10px; }
+details.thinking summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.thinking-body { white-space: pre-wrap; font-size: 12.5px; color: var(--muted); max-height: 220px; overflow: auto; margin-top: 4px; }
+.tools { display: flex; flex-direction: column; gap: 3px; }
+.tool { font-size: 12px; color: var(--muted); }
+.tool .src { display: inline-block; margin-right: 8px; }
+.md { overflow-wrap: anywhere; min-width: 0; }
+.md > :first-child { margin-top: 0; }
+.md pre { background: var(--code); padding: 8px; border-radius: 6px; overflow: auto; max-height: 220px; font-size: 12px; }
+.md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--code); padding: 0 3px; border-radius: 3px; }
+.md pre code { background: none; padding: 0; }
+.md table { border-collapse: collapse; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid var(--line); padding: 3px 7px; text-align: left; }
+.artifacts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.foot { border-top: 1px solid var(--line); padding-top: 6px; font-variant-numeric: tabular-nums; }
+
+.rail { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rail h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.log li button { width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; cursor: pointer; color: var(--fg); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; }
+.log li button[aria-pressed="true"] { border-color: var(--accent); }
+.sha { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent); }
+.subj { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree { font-family: var(--font-mono); font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre; overflow-x: auto; color: var(--muted); max-height: 340px; }
+.tree .new { color: var(--ok); }
+
+dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--fg); padding: 0; width: min(1100px, calc(100vw - 24px)); height: min(760px, calc(100vh - 24px)); }
+dialog[open] { display: flex; flex-direction: column; }
+dialog::backdrop { background: rgba(0,0,0,.5); }
+.dbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.dbar strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spacer { flex: 1; }
+#frame { flex: 1; border: 0; width: 100%; background: #111; }
+#src { flex: 1; margin: 0; padding: 12px; overflow: auto; background: var(--code); font: 12px/1.45 var(--font-mono); }
+</style>
+
+<header class="topbar">
+  <span class="brand">multi-ai</span>
+  <span class="demo-pill">Playground · scripted replies</span>
+  <div class="right">
+    <span class="muted small">Workspace <strong>default</strong></span>
+    <span class="conn">Claude: demo</span>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+    <p class="note">This is the multi-ai interface running in demo mode. Replies are pre-written so you can see the flow without an API key: variants stream side by side, artifacts open live, and each finished variant becomes a git commit. The real app (<code>npm start</code>) sends the same requests to Claude.</p>
+
+    <div class="examples" id="examples" role="group" aria-label="Example prompts"></div>
+    <p class="hint muted" id="hint"></p>
+    <label for="prompt" class="small muted">Prompt</label>
+    <textarea id="prompt" rows="3" readonly></textarea>
+
+    <div class="vhead">
+      <h2>Variants <span class="muted" style="font-weight:400">each runs in its own isolated context</span></h2>
+      <span class="small muted" id="estimate"></span>
+    </div>
+    <div class="variants" id="variants"></div>
+
+    <div class="runrow">
+      <button class="btn primary" id="run">Run all variants</button>
+      <button class="btn" id="reset" hidden>Clear results</button>
+      <span class="small muted" id="status"></span>
+    </div>
+
+    <section class="grid" id="grid" aria-live="polite"></section>
+  </main>
+
+  <aside class="rail">
+    <h2>Workspace git log</h2>
+    <ul class="log" id="log"></ul>
+    <h2 id="treeTitle">Files</h2>
+    <div class="tree" id="tree">workspaces/default/
+└── README.md</div>
+    <p class="small muted">Click a commit to see the repo as it was at that point.</p>
+  </aside>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dbar">
+    <strong id="dlgTitle"></strong>
+    <span class="spacer"></span>
+    <button class="btn small" id="toggleSrc">Source</button>
+    <button class="btn small" id="closeDlg">Close</button>
+  </div>
+  <iframe id="frame" sandbox="allow-scripts" title="Artifact preview"></iframe>
+  <pre id="src" hidden></pre>
+</dialog>
+
+<script>
+// ---------- artifacts the scripted variants "produce" ----------
+const DAW_FULL = `<!doctype html><html><head><meta charset="utf-8"><title>Opus DAW</title>
+<style>
+body{margin:0;background:#15161a;color:#e8e6df;font:13px system-ui,sans-serif;padding:18px}
+h1{font-size:16px;margin:0 0 12px;letter-spacing:.02em}
+.bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+button{background:#e2734f;color:#15161a;border:0;border-radius:5px;padding:6px 14px;font-weight:700;cursor:pointer}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.name{width:54px;color:#9a988f}
+.steps{display:grid;grid-template-columns:repeat(16,26px);gap:4px}
+.s{height:26px;border-radius:4px;background:#24262c;cursor:pointer}
+.s:nth-child(4n+1){background:#2c2f37}
+.s.on{background:#e2734f}.s.now{outline:2px solid #f3efe4}
+input[type=range]{width:80px}
+</style></head><body>
+<h1>16-step DAW · Web Audio</h1>
+<div class="bar"><button id="play">Play</button><label>Tempo <input id="bpm" type="range" min="70" max="170" value="112"> <span id="bv">112</span> BPM</label></div>
+<div id="tracks"></div>
+<script>
+const T=[["Kick",[0,4,8,12]],["Snare",[4,12]],["Hat",[0,2,4,6,8,10,12,14]],["Clap",[12]],["Synth",[0,3,7,10]]];
+const notes=[220,261.6,293.7,329.6,392,440,523.3,587.3,659.3,784,880,987.8,1046.5,1174.7,1318.5,1568];
+let ctx,step=0,timer,grid=T.map(([n,on])=>Array.from({length:16},(_,i)=>on.includes(i)));
+const vol=T.map(()=>0.8);
+const root=document.getElementById("tracks");
+T.forEach(([n],r)=>{const row=document.createElement("div");row.className="row";
+row.innerHTML='<span class="name">'+n+'</span><div class="steps"></div><input type="range" min="0" max="1" step="0.05" value="0.8" title="volume">';
+const st=row.querySelector(".steps");
+for(let i=0;i<16;i++){const c=document.createElement("div");c.className="s"+(grid[r][i]?" on":"");c.onclick=()=>{grid[r][i]=!grid[r][i];c.classList.toggle("on")};st.appendChild(c)}
+row.querySelector("input").oninput=e=>vol[r]=+e.target.value;root.appendChild(row)});
+function env(g,t,a,d){g.gain.setValueAtTime(a,t);g.gain.exponentialRampToValueAtTime(0.001,t+d)}
+function noise(t,d,hp,v){const b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=Math.random()*2-1;
+const s=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain();s.buffer=b;f.type="highpass";f.frequency.value=hp;env(g,t,v,d);s.connect(f).connect(g).connect(ctx.destination);s.start(t)}
+function play(r,t){const v=vol[r];if(!v)return;
+if(r===0){const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+.2);env(g,t,v,.35);o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+.4)}
+if(r===1)noise(t,.18,1200,v*.7);if(r===2)noise(t,.05,7000,v*.35);if(r===3){noise(t,.12,900,v*.6);noise(t+.015,.1,900,v*.4)}
+if(r===4){const o=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain();o.type="sawtooth";o.frequency.value=notes[step];f.type="lowpass";f.frequency.value=1400;env(g,t,v*.25,.28);o.connect(f).connect(g).connect(ctx.destination);o.start(t);o.stop(t+.3)}}
+function tick(){const t=ctx.currentTime+.02;grid.forEach((row,r)=>row[step]&&play(r,t));
+document.querySelectorAll(".steps").forEach(s=>[...s.children].forEach((c,i)=>c.classList.toggle("now",i===step)));step=(step+1)%16;
+timer=setTimeout(tick,60000/+bpm.value/4)}
+const bpm=document.getElementById("bpm");bpm.oninput=()=>bv.textContent=bpm.value;
+document.getElementById("play").onclick=e=>{ctx=ctx||new AudioContext();if(timer){clearTimeout(timer);timer=null;e.target.textContent="Play"}else{tick();e.target.textContent="Stop"}};
+<\/script></body></html>`;
+
+const DAW_SMALL = `<!doctype html><html><head><meta charset="utf-8"><title>Haiku beat box</title>
+<style>body{margin:0;background:#101418;color:#dfe6ea;font:13px system-ui;padding:18px}
+.g{display:grid;grid-template-columns:60px repeat(8,30px);gap:5px;align-items:center}
+.c{height:30px;background:#1f2a33;border-radius:50%;cursor:pointer}.c.on{background:#5bc0be}
+button{margin-top:14px;background:#5bc0be;border:0;padding:6px 14px;border-radius:5px;font-weight:700;cursor:pointer}</style></head><body>
+<p>8-step beat box (kick, snare, hat)</p><div class="g" id="g"></div><button id="b">Play</button>
+<script>
+const names=["Kick","Snare","Hat"],on=[[1,0,0,0,1,0,0,0],[0,0,1,0,0,0,1,0],[1,1,1,1,1,1,1,1]];let ctx,i=0,t;
+names.forEach((n,r)=>{g.insertAdjacentHTML("beforeend","<span>"+n+"</span>");on[r].forEach((v,s)=>{const c=document.createElement("div");c.className="c"+(v?" on":"");c.onclick=()=>{on[r][s]^=1;c.classList.toggle("on")};g.appendChild(c)})});
+function hit(r){const o=ctx.createOscillator(),gn=ctx.createGain(),n=ctx.currentTime;o.type=r===0?"sine":"square";o.frequency.setValueAtTime([120,300,6000][r],n);if(r===0)o.frequency.exponentialRampToValueAtTime(40,n+.15);gn.gain.setValueAtTime([.9,.25,.06][r],n);gn.gain.exponentialRampToValueAtTime(.001,n+[.3,.12,.04][r]);o.connect(gn).connect(ctx.destination);o.start();o.stop(n+.3)}
+function step(){on.forEach((row,r)=>row[i]&&hit(r));i=(i+1)%8;t=setTimeout(step,250)}
+b.onclick=()=>{ctx=ctx||new AudioContext();if(t){clearTimeout(t);t=null;b.textContent="Play"}else{step();b.textContent="Stop"}};
+<\/script></body></html>`;
+
+const GARDEN = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#0d1210}canvas{display:block;width:100%;height:100%}p{position:fixed;left:14px;bottom:8px;color:#8fa596;font:12px system-ui;margin:0}</style></head><body>
+<canvas id="c"></canvas><p>Click anywhere to plant. Plants grow toward each other.</p>
+<script>
+const c=document.getElementById("c"),x=c.getContext("2d");let W,H,P=[];
+function rs(){W=c.width=innerWidth*devicePixelRatio;H=c.height=innerHeight*devicePixelRatio}rs();onresize=rs;
+function plant(px,py){P.push({x:px,y:py,a:-Math.PI/2,l:0,h:100+Math.random()*80,w:5*devicePixelRatio})}
+for(let i=0;i<5;i++)plant(W*(.15+i*.17),H);
+c.onclick=e=>plant(e.clientX*devicePixelRatio,H);
+function f(){x.fillStyle="rgba(13,18,16,.06)";x.fillRect(0,0,W,H);const nx=[];
+for(const p of P){if(p.l>220||p.w<.4)continue;const nb=P.reduce((m,q)=>q!==p&&Math.hypot(q.x-p.x,q.y-p.y)<m.d?{d:Math.hypot(q.x-p.x,q.y-p.y),q}:m,{d:1e9});
+if(nb.q)p.a+=Math.sign(Math.atan2(nb.q.y-p.y,nb.q.x-p.x)-p.a)*.004;p.a+=(Math.random()-.5)*.12;
+const ox=p.x,oy=p.y;p.x+=Math.cos(p.a)*2*devicePixelRatio;p.y+=Math.sin(p.a)*2*devicePixelRatio;p.l++;p.w*=.994;
+x.strokeStyle="hsl("+(p.h+p.l*.4)+",55%,"+(35+p.l/8)+"%)";x.lineWidth=p.w;x.lineCap="round";x.beginPath();x.moveTo(ox,oy);x.lineTo(p.x,p.y);x.stroke();
+if(Math.random()<.025)nx.push({...p,a:p.a+(Math.random()<.5?-.6:.6),w:p.w*.7})}
+P.push(...nx);if(P.length>900)P=P.slice(-900);requestAnimationFrame(f)}f();
+<\/script></body></html>`;
+
+// ---------- scripted examples ----------
+const PRICES = { "Claude Opus 5.5": [4, 20], "Claude Sonnet 5.5": [2, 10], "Claude Haiku 4.5": [1, 5], "Claude Fable 5.1": [10, 50] };
+const EXAMPLES = [
+  {
+    title: "Browser music DAW",
+    hint: "Opus vs Sonnet vs Haiku. When they finish, open each artifact and press Play.",
+    prompt: "Build a browser-based music DAW as a single self-contained HTML file. 16-step sequencer, at least 4 synthesized drum tracks plus a melodic synth, tempo, play/stop, per-track volume. Use the Web Audio API.",
+    variants: [
+      { model: "Claude Opus 5.5", tags: ["effort high"], speed: 5, tin: 96, tout: 4100,
+        thinking: "A single file with no dependencies, so every drum has to be synthesized. Kick: a sine with a fast pitch drop from about 150 Hz to 40 Hz. Snare and hats: filtered noise bursts, highpass at different cutoffs. Clap: two staggered noise bursts.\n\nTiming: setTimeout jitter is audible, so schedule each step slightly ahead on the AudioContext clock.\n\nThe synth row should be playable straight away, so seed it with a minor pentatonic pattern. Add per-track volume sliders and a clear playhead.",
+        text: "Here's a complete 16-step DAW in one file.\n\n**What's in it**\n- 5 tracks: Kick, Snare, Hat, Clap (all synthesized) and a sawtooth **Synth** through a low-pass filter\n- Click cells to toggle steps; downbeats are shaded so the bar is easy to read\n- Tempo 70–170 BPM, per-track volume, moving playhead\n\nOpen **artifact-01.html** and press Play. Browsers only start audio after a click.",
+        artifact: { name: "artifact-01.html", html: DAW_FULL } },
+      { model: "Claude Sonnet 5.5", tags: ["effort medium"], speed: 8, tin: 96, tout: 2600,
+        thinking: "Keep it compact but complete. Oscillator-based drums, a 16-column grid, one scheduler loop. Prioritise something that works on first click over extra features.",
+        text: "Done. A working sequencer with synthesized drums and a melodic row.\n\n| Track | Sound |\n|---|---|\n| Kick | sine with pitch drop |\n| Snare | high-passed noise |\n| Hat | short bright noise |\n| Clap | double noise burst |\n| Synth | filtered sawtooth |\n\nIt reuses the same scheduler pattern, so tempo changes apply on the next step.",
+        artifact: { name: "artifact-01.html", html: DAW_FULL.replace("Opus DAW", "Sonnet DAW").replace("#e2734f", "#7aa2f7").replace(".s.on{background:#e2734f}", ".s.on{background:#7aa2f7}") } },
+      { model: "Claude Haiku 4.5", tags: ["thinking budget"], speed: 14, tin: 96, tout: 1100,
+        thinking: "Smallest version that satisfies the core ask: a grid, a few drums, play and stop.",
+        text: "Here's a lightweight beat box. It covers the core of the request: 3 drum tracks on an 8-step grid with play/stop.\n\nIt doesn't include tempo control, per-track volume or the melodic synth yet. Ask a follow-up and I'll add them.",
+        artifact: { name: "artifact-01.html", html: DAW_SMALL } },
+    ],
+  },
+  {
+    title: "Do whatever you want :)",
+    hint: "No task at all. The same model at two effort levels, next to a different model.",
+    prompt: "Do whatever you want :)",
+    variants: [
+      { model: "Claude Opus 5.5", tags: ["effort low"], speed: 9, tin: 12, tout: 380,
+        thinking: "Open invitation. Keep it light and offer something small.",
+        text: "Thanks for the free rein. Here's a tiny gift, a six-word story:\n\n> *Two models answered. Both were right.*\n\nWant a puzzle, a poem, or a weird fact next?" },
+      { model: "Claude Opus 5.5", tags: ["effort max"], speed: 4, tin: 12, tout: 3300,
+        thinking: "An open prompt inside a tool built to compare models. The most useful thing I can make is something they can see and play with, so it shows what a variant can produce beyond text.\n\nIdea: a generative garden. Plants grow from the bottom of the screen, branch at random, and lean toward their nearest neighbour, so separate plants end up reaching for each other. Fitting for an app that puts models side by side.",
+        text: "I made you a small generative garden.\n\nEach plant grows upward, branches at random, and **bends toward its nearest neighbour**. Click to plant more and watch them reach for each other.\n\nOpen **artifact-01.html**.",
+        artifact: { name: "artifact-01.html", html: GARDEN } },
+      { model: "Claude Sonnet 5.5", tags: ["effort medium"], speed: 8, tin: 12, tout: 900,
+        thinking: "Pick something genuinely interesting and short. A counterintuitive fact with a quick explanation.",
+        text: "Here's one of my favourite small surprises:\n\n**There are more possible orderings of a deck of 52 cards than atoms on Earth.** 52! is about 8 × 10⁶⁷. A properly shuffled deck is almost certainly in an order no deck has ever been in.\n\nWant the maths, or another one?" },
+    ],
+  },
+  {
+    title: "Cheapest table in Milan, next 30 min",
+    hint: "Web search is on for both variants. The restaurant names below are invented placeholders; real runs search the live web.",
+    prompt: "Find me the cheapest restaurant to eat at in Milan with a reservation available in the next 30 minutes. Show sources and say what you couldn't verify.",
+    variants: [
+      { model: "Claude Opus 5.5", tags: ["effort high", "web search"], speed: 6, tin: 140, tout: 1900,
+        searches: ["Milan restaurants table available tonight booking", "cheap trattoria Milan Navigli average price", "Milan restaurant last minute reservation app"],
+        thinking: "Live availability sits inside booking platforms that search results can't query in real time. I'll find candidates with low average prices on booking sites, then be explicit that availability must be confirmed in the booking app.",
+        text: "**Short answer:** I can't confirm live table availability, because search results don't expose booking calendars. Here are the cheapest candidates I found that list instant booking:\n\n| # | Place (sample) | Avg price | Area |\n|---|---|---|---|\n| 1 | Trattoria Esempio | €18 | Navigli |\n| 2 | Osteria Campione | €22 | Isola |\n| 3 | Pizzeria Modello | €15* | Città Studi |\n\n*Walk-in only, no reservations.\n\n**Could not verify:** whether any slot opens in the next 30 minutes. Open a booking app, filter by \"now\" and sort by price." },
+      { model: "Claude Sonnet 5.5", tags: ["effort medium", "web search"], speed: 9, tin: 140, tout: 1100,
+        searches: ["cheapest restaurant Milan reservation now"],
+        thinking: "One broad search, then summarise. Flag the real-time limitation up front.",
+        text: "I found a few budget options, but **I can't see real-time availability**:\n\n1. **Trattoria Esempio** (sample), around €18 per person, takes online bookings\n2. **Osteria Campione** (sample), around €22 per person\n\nFor a table within 30 minutes, check a booking app's \"available now\" filter or call ahead." },
+    ],
+  },
+  {
+    title: "Same model, different persona",
+    hint: "One model and one question, with three different system prompts. How far does context steer the answer?",
+    prompt: "I have $5,000 in savings and a job offer in another city: 15% more pay, 25% higher cost of living. Should I take it?",
+    variants: [
+      { model: "Claude Sonnet 5.5", tags: ["context: cautious planner"], speed: 8, tin: 70, tout: 700,
+        thinking: "As a cautious planner: run the numbers first. Real purchasing power drops, and $5k is a thin buffer for a move.",
+        text: "**On the numbers, probably not, unless something else makes up for it.**\n\nWith pay +15% and costs +25%, your real income falls about **8%**. A move typically costs $2–4k, which could take most of your $5k buffer.\n\nTake it only if it buys real career growth, and negotiate relocation support first." },
+      { model: "Claude Sonnet 5.5", tags: ["context: bold career coach"], speed: 8, tin: 70, tout: 650,
+        thinking: "As a career coach: early-career moves compound. Judge the trajectory, not just this year's salary.",
+        text: "**Probably yes, if the role is a step up.**\n\nThe salary maths is close. What matters early on is how fast you grow. A bigger city, a better title and a new network can be worth far more than an 8% dip in purchasing power.\n\nAsk for a relocation package and go." },
+      { model: "Claude Sonnet 5.5", tags: ["no system prompt"], speed: 8, tin: 60, tout: 800,
+        thinking: "Balanced: give the arithmetic, then the questions that actually decide it.",
+        text: "It depends on what the move gets you.\n\n- **Money:** real income falls roughly 8%.\n- **Risk:** $5k covers a move but leaves little cushion.\n- **Upside:** growth, network, lifestyle.\n\nIf the new role clearly advances your career, it's worth considering. If it's a sideways move, staying is the safer bet." },
+    ],
+  },
+];
+
+// ---------- state & helpers ----------
+const $ = (s) => document.querySelector(s);
+const md = (t) => (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(t)) : t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const sha = () => Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 7);
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 28);
+const modelSlug = (m) => m.toLowerCase().replace("claude ", "claude-").replace(/[ .]/g, "-");
+let current = EXAMPLES[0];
+let commits = [{ sha: sha(), subject: "Initialize workspace", files: ["README.md"] }];
+let timers = [];
+let runCount = 0;
+
+function cost(v) {
+  const [i, o] = PRICES[v.model];
+  return (v.tin * i + v.tout * o) / 1e6;
+}
+
+function selectExample(ex) {
+  current = ex;
+  document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.title === ex.title)));
+  $("#prompt").value = ex.prompt;
+  $("#hint").textContent = ex.hint;
+  const box = $("#variants");
+  box.innerHTML = "";
+  ex.variants.forEach((v) => {
+    const row = document.createElement("div");
+    row.className = "vrow";
+    row.innerHTML = `<span class="model"></span>${v.tags.map((t) => `<span class="tag"></span>`).join("")}<span class="price small muted"></span>`;
+    row.querySelector(".model").textContent = v.model;
+    row.querySelectorAll(".tag").forEach((el, i) => (el.textContent = v.tags[i]));
+    row.querySelector(".price").textContent = `$${PRICES[v.model][0]} / $${PRICES[v.model][1]} per Mtok`;
+    box.appendChild(row);
+  });
+  const total = ex.variants.reduce((s, v) => s + cost(v), 0);
+  $("#estimate").textContent = `about $${total.toFixed(3)} if run for real`;
+}
+
+function renderExamples() {
+  for (const ex of EXAMPLES) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = ex.title;
+    b.dataset.title = ex.title;
+    b.onclick = () => { if (!$("#run").disabled) { clearResults(); selectExample(ex); } };
+    $("#examples").appendChild(b);
+  }
+}
+
+// ---------- git panel ----------
+function filesAt(index) {
+  const set = new Set();
+  commits.slice(0, index + 1).forEach((c) => c.files.forEach((f) => set.add(f)));
+  return [...set].sort();
+}
+
+function renderTree(index, highlight = []) {
+  // Build a nested object from paths, then print it depth-first.
+  const root = {};
+  for (const f of filesAt(index)) {
+    let node = root;
+    f.split("/").forEach((part, i, arr) => { node = node[part] ??= (i === arr.length - 1 ? f : {}); });
+  }
+  const tree = $("#tree");
+  tree.textContent = "workspaces/default/\n";
+  const walk = (node, depth) => {
+    for (const key of Object.keys(node).sort()) {
+      const val = node[key];
+      const span = document.createElement("span");
+      const isFile = typeof val === "string";
+      span.textContent = "  ".repeat(depth + 1) + (isFile ? "· " : "▸ ") + key + (isFile ? "" : "/");
+      if (isFile && highlight.includes(val)) span.className = "new";
+      tree.append(span, "\n");
+      if (!isFile) walk(val, depth + 1);
+    }
+  };
+  walk(root, 0);
+}
+
+function renderLog(selected = commits.length - 1) {
+  const ul = $("#log");
+  ul.innerHTML = "";
+  [...commits].map((c, i) => [c, i]).reverse().forEach(([c, i]) => {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.setAttribute("aria-pressed", String(i === selected));
+    b.innerHTML = `<span class="sha"></span><span class="subj"></span>`;
+    b.querySelector(".sha").textContent = c.sha;
+    b.querySelector(".subj").textContent = c.subject;
+    b.title = c.subject;
+    b.onclick = () => { renderLog(i); renderTree(i, c.files); $("#treeTitle").textContent = i === commits.length - 1 ? "Files" : `Files at ${c.sha}`; };
+    li.appendChild(b);
+    ul.appendChild(li);
+  });
+  renderTree(selected, commits[selected].files);
+  $("#treeTitle").textContent = "Files";
+}
+
+function commit(subject, files) {
+  commits.push({ sha: sha(), subject, files });
+  renderLog();
+  return commits[commits.length - 1].sha;
+}
+
+// ---------- run simulation ----------
+function clearResults() {
+  timers.forEach(clearInterval);
+  timers = [];
+  $("#grid").innerHTML = "";
+  $("#reset").hidden = true;
+  $("#status").textContent = "";
+}
+
+function makeCard(v) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.innerHTML = `
+    <div class="card-head"><div class="card-title"></div><span class="badge running">running</span></div>
+    <details class="thinking" open><summary>Thinking</summary><div class="thinking-body"></div></details>
+    <div class="tools"></div>
+    <div class="md"></div>
+    <div class="artifacts"></div>
+    <div class="foot small muted">streaming…</div>`;
+  el.querySelector(".card-title").textContent = `${v.model} · ${v.tags.join(" · ")}`;
+  $("#grid").appendChild(el);
+  return el;
+}
+
+function run() {
+  clearResults();
+  runCount++;
+  const ex = current;
+  const runId = `20261004-${String(141500 + runCount * 37).padStart(6, "0")}-${slug(ex.prompt)}`;
+  commit(`Prompt ${runId.slice(0, 22)}…`, [`runs/${runId}/prompt.md`, `runs/${runId}/run.json`]);
+  $("#run").disabled = true;
+  $("#status").textContent = `${ex.variants.length} variants running in parallel`;
+  let remaining = ex.variants.length;
+
+  ex.variants.forEach((v, vi) => {
+    const el = makeCard(v);
+    const thinkEl = el.querySelector(".thinking-body");
+    const textEl = el.querySelector(".md");
+    const toolsEl = el.querySelector(".tools");
+    const steps = [];
+    for (let i = 0; i < v.thinking.length; i += v.speed) steps.push(["think", v.thinking.slice(i, i + v.speed)]);
+    (v.searches || []).forEach((q) => steps.push(["search", q]));
+    for (let i = 0; i < v.text.length; i += v.speed) steps.push(["text", v.text.slice(i, i + v.speed)]);
+    let k = 0, thinking = "", text = "";
+    const id = setInterval(() => {
+      if (k >= steps.length) {
+        clearInterval(id);
+        finish(v, vi, el, runId);
+        if (--remaining === 0) { $("#run").disabled = false; $("#reset").hidden = false; $("#status").textContent = "All variants finished and committed"; }
+        return;
+      }
+      const [kind, chunk] = steps[k++];
+      if (kind === "think") { thinking += chunk; thinkEl.textContent = thinking; thinkEl.scrollTop = thinkEl.scrollHeight; }
+      if (kind === "search") {
+        const d = document.createElement("div");
+        d.className = "tool";
+        d.textContent = `Searched: ${chunk}`;
+        toolsEl.appendChild(d);
+      }
+      if (kind === "text") { text += chunk; textEl.innerHTML = md(text); }
+    }, 28 + vi * 6);
+    timers.push(id);
+  });
+}
+
+function finish(v, vi, el, runId) {
+  const badge = el.querySelector(".badge");
+  badge.textContent = "done";
+  badge.className = "badge done";
+  el.querySelector(".thinking").open = false;
+  const dir = `runs/${runId}/variants/v${vi + 1}-${modelSlug(v.model)}`;
+  const files = [`${dir}/meta.json`, `${dir}/thinking.md`, `${dir}/response.md`, `${dir}/events.jsonl`];
+  if (v.artifact) {
+    files.push(`${dir}/artifacts/${v.artifact.name}`);
+    const box = el.querySelector(".artifacts");
+    box.innerHTML = `<span class="small muted">Artifacts</span>`;
+    const b = document.createElement("button");
+    b.className = "btn small";
+    b.textContent = `▶ ${v.artifact.name}`;
+    b.onclick = () => openArtifact(v);
+    box.appendChild(b);
+  }
+  const s = commit(`${v.model} · ${v.tags[0]}: done`, files);
+  el.querySelector(".foot").textContent = `in ${v.tin} · out ${v.tout.toLocaleString()} tok · ≈ $${cost(v).toFixed(4)} · saved ${s}`;
+}
+
+// ---------- artifact viewer ----------
+function openArtifact(v) {
+  $("#dlgTitle").textContent = `${v.model} · ${v.artifact.name}`;
+  $("#src").textContent = v.artifact.html;
+  $("#src").hidden = true;
+  $("#frame").hidden = false;
+  $("#frame").srcdoc = v.artifact.html;
+  $("#toggleSrc").textContent = "Source";
+  $("#dlg").showModal();
+}
+$("#toggleSrc").onclick = () => {
+  const showSrc = $("#src").hidden;
+  $("#src").hidden = !showSrc;
+  $("#frame").hidden = showSrc;
+  $("#toggleSrc").textContent = showSrc ? "Preview" : "Source";
+};
+$("#closeDlg").onclick = () => { $("#frame").srcdoc = ""; $("#dlg").close(); };
+$("#dlg").addEventListener("close", () => { $("#frame").srcdoc = ""; });
+
+$("#run").onclick = run;
+$("#reset").onclick = clearResults;
+renderExamples();
+selectExample(EXAMPLES[0]);
+renderLog();
+</script>

@@ -47,3 +47,24 @@ Then check `data/workspaces/default/` with `git log --stat`.
       plus a check that new content only appears after the old content.
 - [ ] **Make force pushes impossible**: GitHub → Settings → Rules → Rulesets for `main` (and `claude/*`): block force
       pushes, block deletions, require the verifier status check. These must be set manually by the repo owner.
+
+---
+
+## Session 1, part 2 — 2026-10-04 — previewable artifact in every reply
+
+**Prompt:** [prompts/0002-2026-10-04-always-show-artifact.md](prompts/0002-2026-10-04-always-show-artifact.md)
+
+### What changed
+- New standing rule (CLAUDE.md, every-session step 5): every reply to the owner includes a previewable artifact.
+- Added `docs/demo/index.html`, a playground for multi-ai that needs no API key. It runs 4 scripted examples
+  (DAW, "do whatever you want", Milan, personas), streams variants side by side, opens working artifacts (two playable
+  drum machines, a generative garden), and shows a simulated workspace git log + file tree with per-commit time travel.
+- Published as a private claude.ai artifact: https://claude.ai/artifact/TUUVzNgDhvxyg9xHC97riE
+  (republish from `docs/demo/index.html` to keep the same URL). Also served by the app at `/demo`.
+
+### How to verify
+Open the artifact link, click **Run all variants**, then open each `artifact-01.html` and press Play.
+Locally: `npm start` → http://localhost:8080/demo.
+
+### Next steps
+Unchanged from part 1. Keep the playground in sync with real UI changes.

@@ -213,6 +213,9 @@ app.get("/api/workspaces/:ws/log", async (req, res) => {
   try { res.json(await workspaceLog(req.params.ws)); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Scripted, no-key playground (the same page published as the chat artifact).
+app.get("/demo", (req, res) => res.sendFile(path.join(__dirname, "..", "docs", "demo", "index.html")));
+
 app.get("/healthz", (req, res) => res.send("ok"));
 
 app.listen(PORT, () => {

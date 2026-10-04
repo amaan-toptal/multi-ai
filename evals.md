@@ -76,3 +76,28 @@
   Owner asked to be reminded to build a CI verifier + disable force pushes (see HANDOFF TODO).
 - **B-05 (was a loophole)** Prompt `{{now}}` placeholder was substituted with the *server's* clock/timezone.
   Fixed: the browser fills it with the user's local time + UTC offset before sending.
+
+---
+
+## 2026-10-04 — session 1, part 2 (prompt 0002)
+
+### Decisions taken without asking
+- **D-15 What "previewable artifact" means:** a claude.ai Artifact page published (or updated) in each reply, showing
+  the current state of the work. When a reply has no new UI to show, update the existing playground or publish a
+  small page for that reply's result. Recorded as a standing rule in CLAUDE.md, which is not an append-only file.
+- **D-16 The first artifact is a scripted playground, not a live client.** The artifact sandbox blocks network calls
+  (CSP), so it can't call the Claude API. Replies are pre-written and labelled "scripted replies"; the Milan example
+  uses obviously invented restaurant names marked "(sample)" so nothing reads as real data.
+- **D-17 One source file for the playground** (`docs/demo/index.html`), written in the artifact page format (no doctype
+  wrapper). The app also serves it at `/demo`; browsers render it fine without the wrapper.
+
+### Evaluations performed
+- **E-05 Playwright run of the playground** at 1300px light and 400px dark: all 3 variants finish, no page errors,
+  no horizontal page scroll (scrollWidth equals viewport), git log and file tree update per commit, DAW artifact
+  renders in the sandboxed iframe. Markdown showed as raw text locally because the CDN is blocked in the build
+  sandbox; the published page loads marked/DOMPurify from cdnjs, which the artifact CSP allows.
+
+### Loopholes / risks
+- **L-09 Playground drift:** the scripted playground can fall out of sync with the real app. Mitigation: CLAUDE.md step 5
+  says to update it whenever the UI or behaviour changes.
+- **L-10 The artifact link is private** to the owner's claude.ai account; others can't open it until shared from the page's Share menu.
