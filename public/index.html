@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>multi-ai</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/purify.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">multi-ai <span class="muted" id="version"></span></div>
+    <label class="ws">Workspace <input id="workspace" spellcheck="false" title="Each workspace is its own git repository of runs"></label>
+    <button id="connectBtn" class="btn">Connect Claude</button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>History</h2>
+        <button id="newRunBtn" class="btn small">New</button>
+      </div>
+      <ul id="history" class="history"></ul>
+    </aside>
+
+    <main class="main">
+      <section id="composer" class="composer">
+        <div class="examples" id="examples"></div>
+        <p class="hint muted" id="exampleHint"></p>
+        <textarea id="prompt" rows="5" placeholder="Ask once, compare many. Pick an example above or type your own prompt…"></textarea>
+
+        <div class="variants-head">
+          <h3>Variants <span class="muted">— each runs in its own isolated context</span></h3>
+          <div>
+            <button id="addVariantBtn" class="btn small">+ Add variant</button>
+          </div>
+        </div>
+        <div id="variants" class="variants"></div>
+
+        <div class="run-row">
+          <button id="runBtn" class="btn primary">Run all variants</button>
+          <button id="stopBtn" class="btn" hidden>Stop</button>
+          <span id="runStatus" class="muted"></span>
+        </div>
+      </section>
+
+      <section id="runView" class="run-view" hidden>
+        <div class="run-meta">
+          <div>
+            <div class="muted small" id="runIdLabel"></div>
+            <pre id="runPrompt" class="run-prompt"></pre>
+          </div>
+          <div id="timeline" class="timeline"></div>
+        </div>
+        <div id="grid" class="grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="connectDialog">
+    <form method="dialog" class="dialog-body">
+      <h2>Connect Claude</h2>
+      <p>Paste an Anthropic API key (starts with <code>sk-ant-</code>). Get one at
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com → API keys</a>.
+        Usage is billed to that key's organization.</p>
+      <input id="keyInput" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+      <label class="check"><input type="checkbox" id="rememberKey"> Remember on this device (stored in this browser's localStorage)</label>
+      <p class="muted small" id="serverKeyNote" hidden>This server also has its own key configured; leave blank to use it.</p>
+      <p id="keyStatus" class="small"></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn">Cancel</button>
+        <button id="forgetKeyBtn" type="button" class="btn">Forget key</button>
+        <button id="verifyKeyBtn" type="button" class="btn primary">Verify &amp; save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="artifactDialog" class="artifact-dialog">
+    <div class="artifact-bar">
+      <strong id="artifactTitle"></strong>
+      <span class="spacer"></span>
+      <button id="artifactSourceBtn" class="btn small">Source</button>
+      <button id="artifactDownloadBtn" class="btn small">Download</button>
+      <button id="artifactCloseBtn" class="btn small">Close</button>
+    </div>
+    <iframe id="artifactFrame" sandbox="allow-scripts allow-modals allow-pointer-lock" title="Artifact preview"></iframe>
+    <pre id="artifactSource" class="artifact-source" hidden></pre>
+  </dialog>
+
+  <template id="variantRowTpl">
+    <div class="variant-row">
+      <select class="v-model"></select>
+      <select class="v-effort" title="Effort: how hard the model thinks"></select>
+      <label class="check small" title="Give this variant Anthropic's web search tool"><input type="checkbox" class="v-web"> web search</label>
+      <button class="btn small v-sys-toggle" type="button" title="Custom system prompt (context) for this variant">context</button>
+      <button class="btn small v-remove" type="button" title="Remove">✕</button>
+      <textarea class="v-system" rows="2" placeholder="Optional system prompt for this variant only" hidden></textarea>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Single-VM deployment: `cp .env.example .env`, edit it, then `docker compose up -d`.
+# Put Caddy/nginx (or a cloud load balancer) in front for HTTPS — see deploy/README.md.
+services:
+  multi-ai:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - multi-ai-data:/data
+volumes:
+  multi-ai-data:

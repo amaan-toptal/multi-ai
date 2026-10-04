@@ -1,0 +1,7 @@
+# Automatic HTTPS in front of the app. Replace the domain, point its DNS A
+# record at the VM, then: docker run -d --network host -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile caddy
+multi-ai.example.com {
+  reverse_proxy localhost:8080 {
+    flush_interval -1   # don't buffer the live (SSE) stream
+  }
+}
