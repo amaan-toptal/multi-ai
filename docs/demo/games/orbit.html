@@ -1,0 +1,13 @@
+<!doctype html><meta charset=utf-8><title>Orbit</title><style>body{margin:0;background:#0b0d17;color:#cfd3ff;font:14px monospace;overflow:hidden}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,R,a=0,r=1,rr=1,o=[],s=0,best=0,t=0,dead=0;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight;R=Math.min(W,H)/7};onresize();
+onkeydown=onpointerdown=e=>{if(dead){o=[];s=0;t=0;dead=0}else r=3-r};
+function f(){x.fillStyle='rgba(11,13,23,.35)';x.fillRect(0,0,W,H);let cx=W/2,cy=H/2;t++;
+if(!dead){a+=.03+s/4e4;s++;if(t%Math.max(22,70-s/60|0)==0)o.push({a:a+1.5+Math.random()*3,l:1+(Math.random()<.5),d:0})}
+rr+=(r-rr)*.25;x.strokeStyle='#2a2f4a';[1,2].map(k=>{x.beginPath();x.arc(cx,cy,R*k,0,7);x.stroke()});
+let px=cx+Math.cos(a)*R*rr,py=cy+Math.sin(a)*R*rr;
+for(let b of o){if(!dead)b.d+=.012;let bx=cx+Math.cos(b.a)*R*b.l,by=cy+Math.sin(b.a)*R*b.l;x.globalAlpha=Math.min(1,b.d);x.fillStyle=`hsl(${b.l*150},80%,62%)`;x.fillRect(bx-9,by-9,18,18);x.globalAlpha=1;
+if(b.d>=1&&Math.hypot(px-bx,py-by)<17&&!dead){dead=1;best=Math.max(best,s)}}
+o=o.filter(b=>b.d<2.4);x.fillStyle='#fff';x.beginPath();x.arc(px,py,8,0,7);x.fill();
+x.fillStyle='#cfd3ff';x.fillText('ORBIT  score '+s+'  best '+best,12,22);x.fillText(dead?'crashed: tap to retry':'tap / any key to switch orbit. Dodge solid blocks.',12,40);requestAnimationFrame(f)}f();
+</script>

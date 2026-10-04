@@ -1,0 +1,14 @@
+<!doctype html><meta charset=utf-8><title>Memory</title><style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#12312b;color:#eafff6;font:16px sans-serif}
+#g{display:grid;grid-template-columns:repeat(4,min(19vw,78px));gap:10px;margin:12px 0}
+#g b{aspect-ratio:1;border-radius:10px;background:#2f7a66;display:grid;place-items:center;font-size:34px;cursor:pointer;color:transparent;transition:.2s}
+#g b.u,#g b.m{background:#eafff6;color:#12312b}#g b.m{opacity:.45}
+p{text-align:center;margin:4px}
+</style><div><p><b>MEMORY</b> · find all 8 pairs</p><p id=s></p><div id=g></div></div><script>
+let G=document.getElementById('g'),S=document.getElementById('s'),open=[],moves=0,found=0,lock=0;
+let cards=[...'★♥♦♣♠☀☂♫★♥♦♣♠☀☂♫'].sort(()=>Math.random()-.5);
+cards.map(ch=>{let e=document.createElement('b');e.textContent=ch;e.onclick=()=>flip(e);G.append(e)});
+function flip(e){if(lock||e.className)return;e.className='u';open.push(e);if(open.length<2)return;moves++;lock=1;
+let[a,b]=open;setTimeout(()=>{if(a.textContent==b.textContent){a.className=b.className='m';found++}else a.className=b.className='';open=[];lock=0;show()},650)}
+function show(){S.textContent=found==8?`All pairs in ${moves} moves! Reload for a new board.`:`moves ${moves} · pairs ${found}/8`}show();
+</script>

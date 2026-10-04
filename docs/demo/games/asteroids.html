@@ -1,0 +1,27 @@
+<!doctype html><meta charset=utf-8><title>Rocks</title><style>body{margin:0;background:#000;overflow:hidden;color:#fff;font:14px monospace}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,K={},S,R,B,P,lives,score,wave,best=0,inv,cool,over;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight};onresize();
+onkeydown=e=>{K[e.code]=1;if(over&&e.code=='Enter')start();if(e.code.startsWith('Arrow')||e.code=='Space')e.preventDefault()};onkeyup=e=>K[e.code]=0;
+let T={};ontouchstart=ontouchmove=e=>{T={};for(let t of e.touches){let u=t.clientX/W;T[u<.33?'ArrowLeft':u>.66?'ArrowRight':'ArrowUp']=1;T.Space=1}if(over)start()};ontouchend=e=>{if(!e.touches.length)T={}};
+function rock(x0,y0,s){let n=9+Math.random()*4|0;return{x:x0,y:y0,s,vx:(Math.random()-.5)*(4-s),vy:(Math.random()-.5)*(4-s),a:0,va:(Math.random()-.5)*.04,p:[...Array(n)].map(()=>.7+Math.random()*.4)}}
+function start(){S={x:W/2,y:H/2,a:-Math.PI/2,vx:0,vy:0};B=[];P=[];lives=3;score=0;wave=0;over=0;inv=120;cool=0;next()}
+function next(){wave++;R=[];for(let i=0;i<2+wave;i++){let a=Math.random()*7;R.push(rock(W/2+Math.cos(a)*W,H/2+Math.sin(a)*H,3))}}
+function boom(x0,y0,n,col){for(let i=0;i<n;i++){let a=Math.random()*7,v=Math.random()*4;P.push({x:x0,y:y0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:30+Math.random()*30,col})}}
+let wrap=o=>{o.x=(o.x+W)%W;o.y=(o.y+H)%H};
+function step(){let k=(n)=>K[n]||T[n];
+if(!over){if(k('ArrowLeft'))S.a-=.07;if(k('ArrowRight'))S.a+=.07;if(k('ArrowUp')){S.vx+=Math.cos(S.a)*.15;S.vy+=Math.sin(S.a)*.15;if(Math.random()<.6)P.push({x:S.x-Math.cos(S.a)*12,y:S.y-Math.sin(S.a)*12,vx:-Math.cos(S.a)*2+(Math.random()-.5),vy:-Math.sin(S.a)*2+(Math.random()-.5),l:15,col:'#fa3'})}
+S.vx*=.99;S.vy*=.99;S.x+=S.vx;S.y+=S.vy;wrap(S);if(cool>0)cool--;if(k('Space')&&!cool){B.push({x:S.x+Math.cos(S.a)*14,y:S.y+Math.sin(S.a)*14,vx:S.vx+Math.cos(S.a)*8,vy:S.vy+Math.sin(S.a)*8,l:55});cool=9}if(inv>0)inv--}
+for(let b of B){b.x+=b.vx;b.y+=b.vy;b.l--;wrap(b)}
+for(let r of R){r.x+=r.vx;r.y+=r.vy;r.a+=r.va;wrap(r);let rad=r.s*14;
+for(let b of B)if(b.l>0&&Math.hypot(b.x-r.x,b.y-r.y)<rad){b.l=0;r.dead=1;score+=[0,100,50,20][r.s];boom(r.x,r.y,12,'#ccc');if(r.s>1)R.push(rock(r.x,r.y,r.s-1),rock(r.x,r.y,r.s-1))}
+if(!over&&!inv&&Math.hypot(S.x-r.x,S.y-r.y)<rad+8){boom(S.x,S.y,40,'#6cf');lives--;inv=150;S={x:W/2,y:H/2,a:-Math.PI/2,vx:0,vy:0};if(!lives){over=1;best=Math.max(best,score)}}}
+R=R.filter(r=>!r.dead);B=B.filter(b=>b.l>0);for(let p of P){p.x+=p.vx;p.y+=p.vy;p.vx*=.97;p.vy*=.97;p.l--}P=P.filter(p=>p.l>0);if(!R.length)next()}
+function draw(){x.fillStyle='rgba(0,0,0,.45)';x.fillRect(0,0,W,H);x.lineWidth=1.6;x.strokeStyle='#ddd';
+for(let r of R){x.beginPath();r.p.map((m,i)=>{let a=r.a+i/r.p.length*Math.PI*2,d=r.s*14*m;x.lineTo(r.x+Math.cos(a)*d,r.y+Math.sin(a)*d)});x.closePath();x.stroke()}
+x.fillStyle='#fff';for(let b of B)x.fillRect(b.x-1.5,b.y-1.5,3,3);for(let p of P){x.globalAlpha=p.l/60;x.fillStyle=p.col;x.fillRect(p.x,p.y,2,2)}x.globalAlpha=1;
+if(!over&&(inv%10<6)){x.strokeStyle='#6cf';x.beginPath();[[14,0],[-10,-9],[-6,0],[-10,9]].map(([a,b])=>x.lineTo(S.x+a*Math.cos(S.a)-b*Math.sin(S.a),S.y+a*Math.sin(S.a)+b*Math.cos(S.a)));x.closePath();x.stroke()}
+x.fillStyle='#fff';x.fillText(`SCORE ${score}   WAVE ${wave}   LIVES ${'▲'.repeat(lives)}   BEST ${best}`,14,24);
+if(over){x.textAlign='center';x.font='28px monospace';x.fillText('GAME OVER',W/2,H/2);x.font='14px monospace';x.fillText('press Enter or tap to play again',W/2,H/2+28);x.textAlign='left'}
+else if(wave==1&&score==0)x.fillText('← → rotate   ↑ thrust   Space fire   (touch: left / middle / right thirds)',14,44)}
+function loop(){step();draw();requestAnimationFrame(loop)}start();loop();
+</script>

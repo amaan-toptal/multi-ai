@@ -57,3 +57,25 @@ branching/rollback UI beyond read-only time travel; per-variant git repos.
    remote with branch protection (no force-push) and a CI append-only verifier.
 5. **v0.6 — accounts**: real sign-in (OAuth/email), per-user encrypted key vault, per-user repos.
 6. Comparisons/evals: side-by-side diff of responses, human voting, LLM-judge scoring stored with the run.
+
+---
+
+## v0.1.1 — 2026-10-04 — reprompt / takes (prompt 0003)
+
+### Change to the plan
+- **New concept: a *take*.** A take is one fresh, isolated run of a variant. Rerunning a variant ("reprompt") adds a
+  take; it never overwrites earlier ones. Takes are how the app shows run-to-run variance (stochasticity) next to
+  variant-to-variant differences.
+- **Playground (built):** every scripted variant has 2–3 seeded takes. Each card has *↻ Reprompt in a fresh context*,
+  take tabs, and a verdict badge (*✓ N takes identical* / *≠ takes differ*). *↻ Reprompt all* reruns every card.
+  Takes commit to `variants/<v>/takes/<n>/`.
+- **Size-budget prompts:** when an example sets a byte limit, each artifact shows its measured size and a pass/fail check.
+- **Real app (planned, roadmap v0.2):** `POST /api/runs/:id/variants/:v/reprompt` runs the same variant config
+  again with no shared history, writes `variants/<v>/takes/<n>/`, and the UI gets the same tabs and verdict.
+  For exact-match checks the verdict should compare normalised text (and later, structured output).
+- **Determinism examples (real app):** pinned via context only (system prompts with rules, templates, fixed defaults).
+  Real JSON-schema structured output (`output_config.format`) per variant is a follow-up.
+
+### Prompt set added
+Determinism: random number with/without deterministic mode; ticket triage free text vs rules/JSON; production runbook
+free-form vs fixed template. Games: fun game < 2 KB, puzzle game < 3 KB, action game < 4 KB. Fun: tell me a joke.

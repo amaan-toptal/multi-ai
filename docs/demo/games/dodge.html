@@ -1,0 +1,9 @@
+<!doctype html><meta charset=utf-8><title>Dodge</title><style>body{margin:0;background:#111;color:#eee;font:14px sans-serif;overflow:hidden;cursor:none}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,px,b=[],t=0,best=0,over=0;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight;px=W/2};onresize();
+onpointermove=e=>px=e.clientX;onpointerdown=()=>{if(over){b=[];t=0;over=0}};
+function f(){x.fillStyle='#111';x.fillRect(0,0,W,H);if(!over){t++;if(Math.random()<.04+t/2e4)b.push({x:Math.random()*W,y:-20,v:2+Math.random()*3+t/600})}
+x.fillStyle='#f55';for(let o of b){if(!over)o.y+=o.v;x.fillRect(o.x-10,o.y-10,20,20);if(Math.abs(o.x-px)<22&&Math.abs(o.y-(H-30))<22&&!over){over=1;best=Math.max(best,t)}}
+b=b.filter(o=>o.y<H+20);x.fillStyle='#5cf';x.fillRect(px-12,H-42,24,24);
+x.fillStyle='#eee';x.fillText('Time '+(t/60).toFixed(1)+'s  Best '+(best/60).toFixed(1)+'s',12,22);if(over)x.fillText('Hit! Click to play again',12,42);else if(t<180)x.fillText('Move the mouse / finger to dodge',12,42);requestAnimationFrame(f)}f();
+</script>

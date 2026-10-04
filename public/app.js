@@ -307,7 +307,7 @@ function renderArtifacts(card, artifacts) {
   for (const a of artifacts) {
     const b = document.createElement("button");
     b.className = "btn small artifact-btn";
-    b.textContent = (a.previewable ? "▶ " : "📄 ") + a.name;
+    b.textContent = (a.previewable ? "▶ " : "📄 ") + a.name + ` · ${new Blob([a.content]).size.toLocaleString()} bytes`;
     b.onclick = () => openArtifact(a, card.v.label);
     card.artifactsEl.appendChild(b);
   }

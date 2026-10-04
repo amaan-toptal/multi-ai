@@ -1,0 +1,9 @@
+<!doctype html><meta charset=utf-8><title>Pop</title><style>body{margin:0;background:#1b1530;color:#fff;font:16px sans-serif;overflow:hidden}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,d=[],sc=0,miss=0,t=0,best=0;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight};onresize();
+onpointerdown=e=>{if(miss>2){d=[];sc=miss=t=0;return}let hit=d.findIndex(o=>Math.hypot(o.x-e.clientX,o.y-e.clientY)<o.r);hit<0?0:(d.splice(hit,1),sc++)};
+function f(){x.fillStyle='#1b1530';x.fillRect(0,0,W,H);if(miss<3){t++;if(t%Math.max(20,60-sc)==0)d.push({x:40+Math.random()*(W-80),y:60+Math.random()*(H-100),r:34,h:Math.random()*360})}
+for(let o of d){if(miss<3)o.r-=.25+sc/200;x.fillStyle=`hsl(${o.h},80%,60%)`;x.beginPath();x.arc(o.x,o.y,Math.max(o.r,0),0,7);x.fill()}
+d=d.filter(o=>o.r>0||(miss++,0));if(miss>2)best=Math.max(best,sc);
+x.fillStyle='#fff';x.fillText(`Popped ${sc}   Missed ${Math.min(miss,3)}/3   Best ${best}`,12,26);if(miss>2)x.fillText('Game over. Click to restart',12,50);requestAnimationFrame(f)}f();
+</script>

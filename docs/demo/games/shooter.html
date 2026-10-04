@@ -1,0 +1,16 @@
+<!doctype html><meta charset=utf-8><title>Swarm</title><style>body{margin:0;background:#06131a;overflow:hidden;font:15px sans-serif;color:#bff;cursor:crosshair}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,K={},p,m={x:0,y:0},E,B,hp,sc,t,best=0,over=0;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight};onresize();
+onkeydown=e=>{K[e.key.toLowerCase()]=1;if(over&&e.key=='Enter')start()};onkeyup=e=>K[e.key.toLowerCase()]=0;onpointermove=e=>{m.x=e.clientX;m.y=e.clientY};onpointerdown=e=>{m.x=e.clientX;m.y=e.clientY;if(over)start()};
+function start(){p={x:W/2,y:H/2};E=[];B=[];hp=5;sc=0;t=0;over=0}start();
+function f(){x.fillStyle='rgba(6,19,26,.4)';x.fillRect(0,0,W,H);
+if(!over){t++;let v=3.2;p.x+=((K.d|K.arrowright)-(K.a|K.arrowleft))*v;p.y+=((K.s|K.arrowdown)-(K.w|K.arrowup))*v;p.x=Math.max(10,Math.min(W-10,p.x));p.y=Math.max(10,Math.min(H-10,p.y));
+if(t%8==0){let a=Math.atan2(m.y-p.y,m.x-p.x);B.push({x:p.x,y:p.y,vx:Math.cos(a)*9,vy:Math.sin(a)*9})}
+if(t%Math.max(12,50-t/120|0)==0){let a=Math.random()*7,r=Math.max(W,H)*.6;E.push({x:W/2+Math.cos(a)*r,y:H/2+Math.sin(a)*r,s:1+Math.random()+t/3e3})}}
+for(let b of B){b.x+=b.vx;b.y+=b.vy}B=B.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
+for(let e of E){let a=Math.atan2(p.y-e.y,p.x-e.x);if(!over){e.x+=Math.cos(a)*e.s;e.y+=Math.sin(a)*e.s}
+for(let b of B)if(Math.hypot(b.x-e.x,b.y-e.y)<14){e.d=1;b.x=-9;sc++}if(!over&&!e.d&&Math.hypot(p.x-e.x,p.y-e.y)<18){e.d=1;hp--;if(!hp){over=1;best=Math.max(best,sc)}}
+x.fillStyle=`hsl(${330+e.s*10},90%,60%)`;x.beginPath();x.arc(e.x,e.y,10,0,7);x.fill()}E=E.filter(e=>!e.d);
+x.fillStyle='#ff9';for(let b of B)x.fillRect(b.x-2,b.y-2,4,4);x.fillStyle='#4ef';x.beginPath();x.arc(p.x,p.y,11,0,7);x.fill();
+x.fillStyle='#bff';x.fillText(`kills ${sc}   health ${'♥'.repeat(hp)}   best ${best}`,14,24);x.fillText(over?'Overrun! Click or Enter to restart':'WASD / arrows to move · aim with the mouse · auto-fire',14,46);requestAnimationFrame(f)}f();
+</script>

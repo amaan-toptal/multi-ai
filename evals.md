@@ -101,3 +101,50 @@
 - **L-09 Playground drift:** the scripted playground can fall out of sync with the real app. Mitigation: CLAUDE.md step 5
   says to update it whenever the UI or behaviour changes.
 - **L-10 The artifact link is private** to the owner's claude.ai account; others can't open it until shared from the page's Share menu.
+
+---
+
+## 2026-10-04 — session 1, part 3 (prompt 0003)
+
+### Decisions taken without asking
+- **D-18 "Reprompt" = rerun the same variant in a fresh context, kept as a numbered take** (never overwriting). Seeded
+  2–3 takes for every scripted variant. When a card has used all its seeded takes the button says so instead of
+  looping, because looping would show repeated outputs and fake determinism.
+- **D-19 The three determinism prompts** (picked to show different levers): (1) random number, plain vs a
+  "deterministic mode" system prompt with a documented default; (2) ticket triage, free text vs decision rules + JSON
+  schema; (3) production column-rename runbook, free-form vs a fixed six-step template. Hints say why: current Claude
+  models reject `temperature`/`top_p`, so consistency has to come from context, schemas and caller-supplied seeds.
+- **D-20 Size budgets:** "fun game < 2 KB" as asked; **puzzle < 3 KB** and **action < 4 KB** (below the 4 KB / 10 KB
+  the owner suggested) because the hand-written games fit comfortably and a tighter budget is more impressive.
+- **D-21 The 12 games are real, hand-written, standalone files** in `docs/demo/games/` (2 takes × 2 models × 3 prompts),
+  not mock-ups. `node docs/demo/build.mjs` inlines them into the playground. Byte sizes are measured in the page
+  (UTF-8 `Blob` size), never typed into the reply text.
+- **D-22 Joke takes** use well-known public-domain puns plus one original line; scripted, labelled as such.
+- **D-23 The free-form runbook take 3 deliberately proposes an in-place `RENAME COLUMN`** with a lock warning, to show how
+  variance matters most in safety-critical answers. The template-bound variant always gives expand/contract.
+- **D-24 The real app got the same prompts** (`server/examples.js`) with real system prompts for the determinism
+  variants, plus a byte-size readout on artifact buttons. Real per-variant reprompt is planned (spec v0.1.1), not built.
+
+### Evaluations performed
+- **E-06 All 12 games** loaded in headless Chromium with keyboard and mouse input: no page errors, all render (contact
+  sheet reviewed). Sizes in bytes: orbit 1,408 · snake 1,806 · dodge 1,112 · whack 1,099 (all < 2,048);
+  lights 2,126 · slide 2,188 · memory 1,336 · mini2048 2,004 (all < 3,072); asteroids 3,746 · breakout 3,717 ·
+  runner 1,330 · shooter 2,029 (all < 4,096).
+- **E-07 Playground flows:** run → reprompt all ×2 on the random-number prompt gives "≠ takes differ" for the plain
+  variant and "✓ 3 takes identical" for the deterministic one; reprompt-all disables when takes run out; take tabs
+  switch content; size badges are correct on every game prompt; triage shows differ vs identical; the joke prompt
+  differs on all three models. Mobile 400px dark: no horizontal scroll. Zero page errors.
+- **E-08 Not done:** real-API runs of the new prompts (still no key in the build environment).
+
+### Bugs found (fixed)
+- **B-06** Shooter: holding one movement key produced `NaN` (`1 - undefined`) and froze the player. Fixed with bitwise OR on key state.
+- **B-07** Breakout: the HUD text inherited a dark fill after `ctx.restore()` and was invisible. Fixed.
+- **B-08** A draft "take 2" thinking trace referred to an earlier take, which a fresh context cannot know about. Rewritten.
+
+### Loopholes / risks
+- **L-11 Seeded takes are finite and hand-picked,** so the playground illustrates variance but does not measure it.
+  The real reprompt feature is what will produce honest variance data.
+- **L-12 The determinism variants in the real app rely on system prompts only.** Without schema-enforced structured
+  output they can still drift; E-08 should check this.
+- **L-13 Games in the iframe need focus** for keyboard input; the viewer focuses the frame on open, but a click inside may
+  still be needed in some browsers.

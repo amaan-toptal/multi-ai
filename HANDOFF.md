@@ -68,3 +68,30 @@ Locally: `npm start` → http://localhost:8080/demo.
 
 ### Next steps
 Unchanged from part 1. Keep the playground in sync with real UI changes.
+
+---
+
+## Session 1, part 3 — 2026-10-04 — reprompt takes, determinism prompts, size-limited games
+
+**Prompt:** [prompts/0003-2026-10-04-reprompts-games-determinism.md](prompts/0003-2026-10-04-reprompts-games-determinism.md)
+
+### What changed
+- Playground (`docs/demo/index.html`, same artifact URL): every variant has 2–3 seeded takes; per-card
+  **↻ Reprompt in a fresh context**, take tabs, an identical/differ verdict, and **↻ Reprompt all**. Prompts are grouped
+  into Starters / Determinism / Games / Fun.
+- New prompts: 3 determinism (random number, ticket triage, prod runbook), fun game < 2 KB, puzzle < 3 KB,
+  action < 4 KB, tell me a joke. Game artifacts show measured bytes with a pass/fail check.
+- 12 real games in `docs/demo/games/`; `node docs/demo/build.mjs` inlines them into the playground (idempotent).
+- Real app: same new prompts in `server/examples.js` (with real system prompts for determinism variants) and byte sizes
+  on artifact buttons.
+- spec.md v0.1.1 records the take/reprompt concept and plans the real endpoint.
+
+### How to verify
+Artifact: https://claude.ai/artifact/TUUVzNgDhvxyg9xHC97riE → Determinism → *Random number, twice* → Run →
+*Reprompt all* twice: left card "≠ takes differ", right card "✓ 3 takes identical". Games → open artifacts, check size badges.
+Repo: `node docs/demo/build.mjs` after editing any file in `docs/demo/games/`.
+
+### Next steps
+1. Real reprompt endpoint + take tabs in the app (spec v0.1.1).
+2. Optional per-variant JSON schema (structured output) so the triage example is enforced, not just requested.
+3. Still open: real-API smoke test (E-04/E-08), append-only CI verifier, block force pushes (owner TODO).

@@ -1,0 +1,12 @@
+<!doctype html><meta charset=utf-8><title>Dash</title><style>body{margin:0;background:#ffe9c7;overflow:hidden;font:16px sans-serif;color:#5a3b1c}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,G,y,vy,obs,sp,d,best=0,over=1,first=1;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight;G=H*.75};onresize();
+function jump(){if(over){obs=[];sp=6;d=0;y=G;vy=0;over=0;first=0}else if(y>=G)vy=-14}
+onkeydown=e=>{if(e.code=='Space'||e.code=='ArrowUp'){e.preventDefault();jump()}};onpointerdown=jump;
+function f(){x.fillStyle='#ffe9c7';x.fillRect(0,0,W,H);x.fillStyle='#e7b77a';x.fillRect(0,G,W,H-G);
+if(!over){vy+=.8;y=Math.min(G,y+vy);if(y==G)vy=0;sp+=.003;d+=sp;if(!obs.length||obs[obs.length-1].x<W-260-Math.random()*400)obs.push({x:W+20,h:24+Math.random()*40,w:18+Math.random()*24});
+for(let o of obs){o.x-=sp;if(o.x<100&&o.x+o.w>70&&y>G-o.h){over=1;best=Math.max(best,d/10|0)}}obs=obs.filter(o=>o.x>-60)}
+x.fillStyle='#8a4f22';for(let o of obs||[])x.fillRect(o.x,G-o.h,o.w,o.h);
+x.fillStyle='#d4572a';x.fillRect(70,(y||G)-30,30,30);x.fillStyle='#5a3b1c';
+x.fillText(`distance ${d/10|0||0}   best ${best}`,16,28);if(over)x.fillText(first?'Space / tap to start, then to jump':'Crash! Space / tap to run again',16,52);requestAnimationFrame(f)}f();
+</script>

@@ -1,0 +1,15 @@
+<!doctype html><meta charset=utf-8><title>Neon Snake</title><style>body{margin:0;background:#0d110c;color:#b7f5a3;font:14px monospace;display:grid;place-items:center;height:100vh}canvas{border:1px solid #2c3a28}</style><div id=h></div><canvas id=c></canvas><script>
+let c=document.getElementById('c'),h=document.getElementById('h'),x=c.getContext('2d'),N=20,S,sn,d,q,f,sc,best=0,over,sx,sy;
+function reset(){sn=[[10,10],[9,10],[8,10]];d=[1,0];q=[];sc=0;over=0;food()}
+function food(){do f=[Math.random()*N|0,Math.random()*N|0];while(sn.some(p=>p+''==f+''))}
+onresize=()=>{S=Math.min(innerWidth,innerHeight-40)*.9/N|0;c.width=c.height=S*N};onresize();reset();
+let K={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
+function turn(k){let l=q[q.length-1]||d;if(k&&k[0]!=-l[0]&&k[1]!=-l[1]&&q.length<3)q.push(k)}
+onkeydown=e=>over?reset():turn(K[e.key]);
+ontouchstart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY};
+ontouchend=e=>{let X=e.changedTouches[0].clientX-sx,Y=e.changedTouches[0].clientY-sy;over?reset():turn(Math.abs(X)>Math.abs(Y)?[Math.sign(X),0]:[0,Math.sign(Y)])};
+(function tick(){if(!over){d=q.shift()||d;let n=[(sn[0][0]+d[0]+N)%N,(sn[0][1]+d[1]+N)%N];if(sn.some(p=>p+''==n+'')){over=1;best=Math.max(best,sc)}else{sn.unshift(n);n+''==f+''?(sc++,food()):sn.pop()}}
+x.fillStyle='#0d110c';x.fillRect(0,0,c.width,c.height);x.shadowBlur=12;x.shadowColor=x.fillStyle='#ff5d73';x.fillRect(f[0]*S+3,f[1]*S+3,S-6,S-6);
+sn.forEach((p,i)=>{x.shadowColor=x.fillStyle=`hsl(${100+i*5},80%,${60-i/3}%)`;x.fillRect(p[0]*S+1,p[1]*S+1,S-2,S-2)});x.shadowBlur=0;
+h.textContent=over?`Game over with ${sc}. Any key or tap to restart. Best ${best}`:`Score ${sc}   Best ${best}   arrows / WASD / swipe`;setTimeout(tick,Math.max(55,130-sc*4))})();
+</script>

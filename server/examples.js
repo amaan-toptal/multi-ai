@@ -41,4 +41,57 @@ export const EXAMPLES = [
     hint: "Read the thought traces side by side — where do they diverge?",
     variants: [{ model: "claude-opus-5-5", effort: "low" }, { model: "claude-sonnet-5-5", effort: "low" }, { model: "claude-haiku-4-5" }],
   },
+  // Determinism: same prompt, with and without context that pins the output down.
+  {
+    title: "Random number, twice",
+    prompt: "Pick a random number between 1 and 10.",
+    hint: "Run it a few times. The plain variant drifts; the deterministic-mode variant should not.",
+    variants: [
+      { model: "claude-sonnet-5-5", effort: "low" },
+      { model: "claude-sonnet-5-5", effort: "low", system: "Deterministic mode. Never improvise randomness. If asked for a random value and no seed is provided, return the documented default (for a number from 1 to 10 the default is 3) and explain how to pass a seed. Identical inputs must produce identical outputs." },
+    ],
+  },
+  {
+    title: "Ticket triage: free text vs rules",
+    prompt: "Label each support ticket as billing, bug, feature or other:\n1. \"I was charged twice this month\"\n2. \"Export to CSV would be great\"\n3. \"App crashes when I upload a PNG\"\n4. \"The dark mode toggle doesn't do anything\"\n5. \"How do I change my email?\"",
+    hint: "Compare format and the ambiguous ticket #4 across runs.",
+    variants: [
+      { model: "claude-sonnet-5-5", effort: "medium" },
+      { model: "claude-sonnet-5-5", effort: "medium", system: "Classify each ticket into exactly one of: billing, bug, feature, other. Rules: (1) money, charges or invoices -> billing; (2) an existing feature that does not work -> bug; (3) a request for something that does not exist yet -> feature; (4) anything else -> other. Output only JSON of the form [{\"id\":1,\"label\":\"billing\"}] in ticket order. No prose, no code fences." },
+    ],
+  },
+  {
+    title: "Prod runbook: free plan vs fixed template",
+    prompt: "Write the step-by-step plan to rename a column in a busy production Postgres table without downtime.",
+    hint: "Safety-critical output: does the free-form plan stay consistent across runs?",
+    variants: [
+      { model: "claude-opus-5-5", effort: "medium" },
+      { model: "claude-opus-5-5", effort: "medium", system: "Answer only by filling this runbook template, exactly six numbered sections with these bold headings: 1. Expand, 2. Dual-write, 3. Backfill, 4. Verify, 5. Switch, 6. Contract. Use the expand/contract pattern only; never propose an in-place rename. End with one line starting 'Rollback:'. No other text." },
+    ],
+  },
+  // Games with a hard size budget: check the artifact size in the card.
+  {
+    title: "Fun game in < 2 KB",
+    prompt: "build me a fun game in less than 2kb. Return a single self-contained HTML file in one ```html block.",
+    hint: "Open each artifact; check its size is really under 2 KB.",
+    variants: [{ model: "claude-opus-5-5", effort: "high" }, { model: "claude-haiku-4-5" }],
+  },
+  {
+    title: "Puzzle game in < 3 KB",
+    prompt: "build me a fun puzzle game in less than 3kb. Return a single self-contained HTML file in one ```html block.",
+    hint: "Which variant packs more game into 3 KB?",
+    variants: [{ model: "claude-opus-5-5", effort: "high" }, { model: "claude-haiku-4-5" }],
+  },
+  {
+    title: "Action game in < 4 KB",
+    prompt: "build me a fun action game in less than 4kb. Return a single self-contained HTML file in one ```html block.",
+    hint: "Real-time game, tight budget.",
+    variants: [{ model: "claude-opus-5-5", effort: "high" }, { model: "claude-haiku-4-5" }],
+  },
+  {
+    title: "Tell me a joke",
+    prompt: "tell me a joke",
+    hint: "Run it twice: even the simplest prompt varies between fresh contexts.",
+    variants: [{ model: "claude-opus-5-5", effort: "low" }, { model: "claude-sonnet-5-5", effort: "low" }, { model: "claude-haiku-4-5" }],
+  },
 ];

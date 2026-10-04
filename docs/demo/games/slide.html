@@ -1,0 +1,19 @@
+<!doctype html><meta charset=utf-8><title>Slide 15</title><style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f3efe6;color:#2a2620;font:15px Georgia,serif}
+#g{position:relative;width:min(84vw,340px);aspect-ratio:1;background:#d9d1c1;border-radius:10px;margin:12px auto}
+#g i{position:absolute;width:23%;height:23%;border-radius:8px;display:grid;place-items:center;font:700 22px system-ui;color:#fff;cursor:pointer;transition:left .12s,top .12s;text-shadow:0 1px 2px #0005}
+p{text-align:center;margin:4px}button{font:inherit;border:1px solid #2a2620;background:none;border-radius:6px;padding:4px 12px;cursor:pointer}
+</style><div><p><b>SLIDE 15</b> · put the tiles in order. Click a tile next to the gap, or use the arrow keys.</p>
+<p id=s></p><div id=g></div><p><button id=n>New shuffle</button></p></div><script>
+let b,e,mv,t0,tm,G=document.getElementById('g'),S=document.getElementById('s'),T=[];
+for(let n=1;n<16;n++){let d=document.createElement('i');d.textContent=n;d.style.background=`linear-gradient(135deg,hsl(${(n-1)*22},65%,55%),hsl(${(n-1)*22+30},70%,42%))`;d.onclick=()=>tap(b.indexOf(n));G.append(d);T[n]=d}
+function nb(i){let r=i>>2,c=i&3;return[r>0&&i-4,r<3&&i+4,c>0&&i-1,c<3&&i+1].filter(v=>v!==false)}
+function swap(i){b[e]=b[i];b[i]=0;e=i}
+function shuffle(){b=[...Array(15)].map((_,i)=>i+1).concat(0);e=15;let last=-1;for(let k=0;k<300;k++){let o=nb(e).filter(v=>v!=last),p=o[Math.random()*o.length|0];last=e;swap(p)}mv=0;t0=0;clearInterval(tm);draw()}
+function tap(i){if(!nb(e).includes(i)||solved())return;if(!t0){t0=Date.now();tm=setInterval(draw,500)}swap(i);mv++;draw()}
+function solved(){return b.every((v,i)=>v==(i+1)%16)}
+function draw(){b.map((v,i)=>{if(v){T[v].style.left=(i&3)*25+1+'%';T[v].style.top=(i>>2)*25+1+'%'}});let s=t0?((Date.now()-t0)/1e3|0):0;
+if(solved()&&mv){clearInterval(tm);S.textContent=`Solved in ${mv} moves and ${s}s!`}else S.textContent=`moves ${mv} · ${s}s`}
+onkeydown=k=>{let d={ArrowUp:4,ArrowDown:-4,ArrowLeft:1,ArrowRight:-1}[k.key];if(d!=null){k.preventDefault();let i=e+d;if(i>=0&&i<16&&(Math.abs(d)==4||(i>>2)==(e>>2)))tap(i)}};
+document.getElementById('n').onclick=shuffle;shuffle();
+</script>

@@ -1,0 +1,27 @@
+<!doctype html><meta charset=utf-8><title>Brick Bloom</title><style>body{margin:0;background:#0f0a1e;overflow:hidden;font:15px system-ui;color:#fff;cursor:none}canvas{display:block}</style><canvas id=c></canvas><script>
+let c=document.getElementById('c'),x=c.getContext('2d'),W,H,px,pw,balls,bricks,P=[],drops=[],lives,score,lvl,best=0,shake=0,state;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight};onresize();
+onpointermove=e=>px=e.clientX;onkeydown=e=>{if(e.key=='ArrowLeft')px-=40;if(e.key=='ArrowRight')px+=40;if(e.key==' ')launch()};onpointerdown=()=>launch();
+function launch(){if(state=='over'){lives=3;score=0;lvl=0;build()}if(state!='play'){state='play';balls.forEach(b=>{b.vx=3*(Math.random()<.5?-1:1);b.vy=-5-lvl*.4})}}
+function build(){lvl++;bricks=[];let cols=10,bw=(W-40)/cols;for(let r=0;r<5+Math.min(lvl,4);r++)for(let k=0;k<cols;k++)if((r+k+lvl)%7)bricks.push({x:20+k*bw,y:60+r*24,w:bw-4,h:18,hp:1+(r<lvl-1),hue:(r*30+lvl*50)%360});
+pw=Math.max(70,140-lvl*8);balls=[{x:W/2,y:H-60,vx:0,vy:0}];state='ready'}
+function burst(x0,y0,hue,n){for(let i=0;i<n;i++){let a=Math.random()*7,v=1+Math.random()*4;P.push({x:x0,y:y0,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:40,hue})}}
+function step(){px=Math.max(pw/2,Math.min(W-pw/2,px||W/2));
+for(let b of balls){if(state!='play'){b.x=px;b.y=H-46;continue}let sp=Math.hypot(b.vx,b.vy);for(let s=0;s<2;s++){b.x+=b.vx/2;b.y+=b.vy/2;
+if(b.x<8||b.x>W-8){b.vx*=-1;b.x=Math.max(8,Math.min(W-8,b.x))}if(b.y<8){b.vy=Math.abs(b.vy)}
+if(b.vy>0&&b.y>H-48&&b.y<H-30&&Math.abs(b.x-px)<pw/2+8){let o=(b.x-px)/(pw/2);b.vx=o*sp*.8;b.vy=-Math.sqrt(Math.max(1,sp*sp-b.vx*b.vx))}
+for(let k of bricks)if(!k.dead&&b.x>k.x-6&&b.x<k.x+k.w+6&&b.y>k.y-6&&b.y<k.y+k.h+6){let ox=Math.min(b.x-k.x+6,k.x+k.w+6-b.x),oy=Math.min(b.y-k.y+6,k.y+k.h+6-b.y);ox<oy?b.vx*=-1:b.vy*=-1;
+if(--k.hp<=0){k.dead=1;score+=10*lvl;burst(k.x+k.w/2,k.y+k.h/2,k.hue,14);shake=5;if(Math.random()<.12)drops.push({x:k.x+k.w/2,y:k.y,t:Math.random()<.5?'multi':'wide'})}else burst(b.x,b.y,k.hue,4);break}}
+let f=1.0004;b.vx*=f;b.vy*=f}
+balls=balls.filter(b=>b.y<H+20);if(state=='play'&&!balls.length){lives--;if(lives<=0){state='over';best=Math.max(best,score)}else{balls=[{x:px,y:H-46,vx:0,vy:0}];state='ready'}}
+for(let d of drops){d.y+=2.5;if(d.y>H-48&&d.y<H-28&&Math.abs(d.x-px)<pw/2){d.y=H+99;if(d.t=='wide')pw=Math.min(W/2,pw*1.4);else balls.push(...balls.slice(0,3).map(b=>({x:b.x,y:b.y,vx:-b.vx,vy:b.vy})))}}drops=drops.filter(d=>d.y<H);
+bricks=bricks.filter(k=>!k.dead);if(!bricks.length&&state=='play')build();for(let p of P){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.l--}P=P.filter(p=>p.l>0);if(shake>0)shake*=.8}
+function draw(){x.save();x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);x.fillStyle='rgba(15,10,30,.5)';x.fillRect(-9,-9,W+18,H+18);
+for(let k of bricks){x.fillStyle=`hsl(${k.hue},75%,${k.hp>1?45:62}%)`;x.fillRect(k.x,k.y,k.w,k.h)}
+for(let p of P){x.globalAlpha=p.l/40;x.fillStyle=`hsl(${p.hue},90%,65%)`;x.fillRect(p.x,p.y,3,3)}x.globalAlpha=1;
+for(let d of drops){x.fillStyle=d.t=='wide'?'#5f5':'#5cf';x.beginPath();x.arc(d.x,d.y,8,0,7);x.fill()}
+x.fillStyle='#fff';x.shadowBlur=14;x.shadowColor='#c9f';x.fillRect(px-pw/2,H-40,pw,10);for(let b of balls){x.beginPath();x.arc(b.x,b.y,7,0,7);x.fill()}x.shadowBlur=0;x.restore();x.fillStyle='#fff';
+x.fillText(`LEVEL ${lvl}   SCORE ${score}   LIVES ${lives}   BEST ${best}`,16,28);x.textAlign='center';
+if(state=='ready')x.fillText('click / Space to launch · mouse or ← → to move · catch green (wide) and blue (multiball)',W/2,H/2);if(state=='over')x.fillText('GAME OVER · click to play again',W/2,H/2);x.textAlign='left'}
+lives=3;score=0;lvl=0;build();(function loop(){step();draw();requestAnimationFrame(loop)})();
+</script>
