@@ -263,3 +263,33 @@ Keys go in the server's `.env` (never committed): `ANTHROPIC_API_KEY`, `OPENAI_A
   user action.
 - Reply commits are created when a reply finishes (in-flight replies show in a separate "running" list), so commit order
   matches what time travel replays.
+
+---
+
+## v0.6 — 2026-10-05 — orchestrator, step-by-step history, playback, artifacts window, prompt history, flags (prompt 0014)
+
+### Change to the plan
+- **Orchestrator agent** (Claude Opus 5.5 in the mockup) runs after every run and commits three steps:
+  1. summary of the run (`orchestrator/run-NN-summary.md`) and an updated living spec (`spec.md`: goal, acceptance
+     criteria derived from the prompt, open questions);
+  2. verifiers written from the criteria (`verifiers/run-NN.checks.js`) and their results per tab (`evals/run-NN.json`),
+     shown as a "checks N/M passed" chip under each reply;
+  3. a suggested next prompt (`orchestrator/next-prompt-NN.md`), shown under the prompt bar.
+- **Changes view is step by step.** One line per step (icon, plain-language label, time and cost, clock), grouped under a
+  header per run (prompt version, replies, artifacts, duration, cost, checks). Click a step for the full title, sha, diffs
+  and actions. Unsent changes show as one-line items with Show diff, Reset and Commit only.
+- **Time travel reads as playback of a frozen snapshot**: slate-blue, "Playback · read only" badge, desaturated panes,
+  dashed composers, a Play button that steps through history, and "snapshot · read only" badges on panes.
+- **Repo window can dock** on the right (Dock / Float in its title bar, drag the left edge to resize); the browser shrinks
+  to make room. Floating stays the default.
+- **Artifacts window**: its own movable, resizable window with a run picker, variant tabs, and "All side by side" (default)
+  or "One at a time". It follows time travel.
+- **Master prompt** always holds the latest prompt; ↑ / ↓ (on the first / last line) step through earlier prompts and then
+  the suggestion; Ctrl/⌘ + Enter sends and Enter adds a line.
+- **Flags and element names.** Every change above is a flag with the previous behaviour as an option (Flags button in the
+  menu bar, also `window.mai.setFlag(key, value)` in devtools). Major elements carry `data-dbg` names, shown on the page by
+  the "Element names overlay" flag. The Flags window lists the names and the mockup versions with their commits.
+
+### How to ask for changes
+Name the element (`data-dbg`), the flag, or the mockup version, e.g. "set changesView to detailed", "make repo-steps look
+like v4", "move prompt-suggestion above prompt-bar".

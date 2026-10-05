@@ -16,6 +16,12 @@ correction that references the earlier entry; do not edit it in place.
    state of the work, such as the variant windows mockup at `docs/mockup/index.html` (poc branch) or the playground at `docs/demo/index.html`, a screenshot, or a page made for that reply.
    Update the playground when UI or behaviour changes so it stays truthful.
 
+## Mockup conventions (owner request, prompt 0014)
+- Put every new UI behaviour in `docs/mockup/index.html` behind a flag in `FLAG_DEFS`, keeping the previous behaviour as an
+  option, and list it in the Flags window.
+- Give every major element a `data-dbg` name and add it to `ELEMENTS`; the owner uses these names to ask for changes.
+- Add each published mockup version to `HISTORY` with its commit.
+
 ## Dev
 - `npm install && npm test && npm start` → http://localhost:8080
 - Tests use a local mock of the Messages API; no key needed.

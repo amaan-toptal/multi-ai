@@ -231,3 +231,25 @@ Changes shows the staged diff → Reset → a ⟲ commit appears and tab 04 is b
 ### Next steps
 Unchanged: owner review, then the backend on `poc/variant-windows` (provider adapters, git per experiment read with
 `git show <sha>:path`, real zip/bundle export and restore).
+
+---
+
+## Session 1, part 9 — 2026-10-05 — orchestrator, step-by-step history, playback, artifacts window, flags (model: Opus 5.5)
+
+**Prompt:** [0014](prompts/0014-2026-10-05-dock-steps-playback-artifacts-orchestrator.md)
+
+### What changed
+- Mockup v5 (`docs/mockup/index.html`, same link https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx): dockable repo window;
+  step-by-step Changes view grouped by run; slate "playback · read only" time travel with a Play button; Artifacts window
+  with variant tabs and all-side-by-side; prompt bar keeps the latest prompt, ↑ ↓ history, orchestrator suggestion,
+  Ctrl/⌘+Enter to send; orchestrator commits summary + spec, verifiers + results, next prompt after every run;
+  Flags window (every change switchable back) and element names (`data-dbg`, overlay flag).
+- spec v0.6, evals D-62…D-70, E-16, B-21…B-23, L-27…L-28. CLAUDE.md: new rule for flags and element names.
+
+### How to verify
+Artifact → press **Use** on the suggestion → Ctrl/⌘+Enter → watch run 4 and the three ◆ orchestrator steps → **Artifacts**
+→ compare the four charts → **Dock** in the repo title bar → ‹ or ▶ in Time travel → **Flags** → turn on Element names.
+
+### Next steps
+Owner review. Open questions are in the reply (orchestrator model and trigger, verifier depth, dock side, suggestion
+behaviour). Backend unchanged as next big step.

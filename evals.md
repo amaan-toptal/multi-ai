@@ -361,3 +361,45 @@
   must read past states from git objects.
 - **L-26 A restore that reopens a tab revives its old thread** (useful for comparison) but the restored tab's next run is still
   a fresh context; the UI says "fresh context" on every run to avoid confusion.
+
+---
+
+## 2026-10-05 — session 1, part 9 (prompt 0014) — orchestrator, steps, playback, artifacts window, flags
+
+### Decisions taken without asking
+- **D-62 Every change from this round is behind a flag** whose other option is the v4 behaviour, persisted per browser.
+  Owner asked for easy swap/revert; flags beat git reverts for single elements.
+- **D-63 Element names are `data-dbg` attributes** (not ids), so they never collide with code ids, are easy to search in
+  devtools, and can be drawn by one CSS rule for the overlay.
+- **D-64 Mockup versions v1–v5 are named after their commits** (312e3a8, 296579c, 3e60f4f, 55d3ace, this one) so the owner
+  can say "like v4".
+- **D-65 Orchestrator runs automatically after each run, on Opus 5.5**, with small charged costs, and is skipped when its
+  flag is off. Three commits per run: summary + spec, verifiers + results, next prompt.
+- **D-66 Verifiers are deterministic checks** (regex/size/sentence count) derived from the prompt wording, so results are
+  objective and repeatable (RLVR-style); an LLM-judge rubric is a later addition.
+- **D-67 Opening state uses the orchestrator's suggestions**: run 2 and run 3 prompts are its suggestions, and its suggestion
+  after run 3 has scripted chart replies, so "Use" then Ctrl+Enter shows a coherent run 4 (16 of 20 checks; qwen3 fails the
+  definitions and the two-sentence rule).
+- **D-68 ↑ / ↓ only switch prompts from the first / last line**, so multi-line editing still works.
+- **D-69 Docking keeps the window in the same element** (class `docked`, browser right inset follows `--dock-w`) instead of
+  moving it in the DOM, so state and scroll positions survive.
+- **D-70 Playback colour is slate blue** ("frozen"), red stays reserved for stopped/failed.
+
+### Evaluations performed
+- **E-16 Headless Chromium run:** prompt bar opens with prompt v3 and an orchestrator suggestion; ↑ shows v2, ↓↓ shows the
+  suggestion; Enter adds a newline and Ctrl+Enter sends; run 4 commits 4 replies then 3 orchestrator steps (16/20 checks)
+  and a new suggestion; Artifacts window shows 4 working charts side by side in tab order; Dock shrinks the browser
+  (right inset 468 px); three steps back shows the slate "Playback · read only" banner; element-name overlay and flags
+  window render; switching changesView to detailed and ttTheme to pink restores v4 behaviour; 400 px dark has no
+  horizontal scroll; no page errors.
+
+### Bugs found (fixed)
+- **B-21** Accepting the orchestrator's suggestion produced generic simulated replies that failed every check (0/16).
+  Added scripted chart replies and a size criterion for that prompt.
+- **B-22** Artifacts window listed tabs in reply-completion order; now sorted by tab number.
+- **B-23** Element-name labels for a pane and its header overlapped; pane and status labels now sit at the bottom right.
+
+### Loopholes / risks
+- **L-27 Verifiers derived from prompt wording are shallow** (keywords, sentence counts). They make the loop visible but are
+  not proof of correctness; real verifiers should execute artifacts and compare numbers.
+- **L-28 Orchestrator cost is charged even for free-only runs**; with the cap at $0 it should run on a free local model.
