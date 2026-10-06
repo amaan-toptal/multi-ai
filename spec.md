@@ -293,3 +293,44 @@ Keys go in the server's `.env` (never committed): `ANTHROPIC_API_KEY`, `OPENAI_A
 ### How to ask for changes
 Name the element (`data-dbg`), the flag, or the mockup version, e.g. "set changesView to detailed", "make repo-steps look
 like v4", "move prompt-suggestion above prompt-bar".
+
+---
+
+## v0.7 — 2026-10-06 — project windows on a canvas, menu bar, Land-or-Water story, F2P and rubric checks (prompt 0016)
+
+### Change to the plan
+- **Projects, not one experiment.** The UI is a workspace: a macOS-style menu bar over an infinite canvas. Each project is a
+  window on the canvas holding the master prompt, the variant tabs, the artifacts view and its own repo window. Windows
+  move (title bar), resize (corner), collapse, close and reopen from the Window menu; the canvas pans (drag empty space,
+  scroll) and zooms (⌘/Ctrl + scroll or pinch, ⌘/Ctrl + / − / 0 / 1, zoom controls). The menu bar counts projects that
+  need you, and a toast appears when a project finishes and is waiting.
+- **Menu bar**: File (new blank or example project, duplicate, export, close), Edit (use or dismiss suggestion, reset,
+  commit without running, copy prompt), View (zoom, fit, focus, workspace mode, timeline, playback scroll, element names,
+  repo and artifacts windows, tab layout), Project (send, stop, new tab, MCP, time travel, restore, branch), Window
+  (projects with status, arrange, reopen closed), Help (flags, keys, what's new). Commands act on the current project.
+- **Timeline ribbon** under the panes: one card per step you sent (who wrote it, prompt, per-model thumbnails or
+  artifact chips, replies, checks, cost), arrows marking steps that came from the orchestrator, and a ghost card with the
+  next suggestion (Use, Use and send). Clicking a card plays that step back.
+- **Playback scrolls every pane to its latest visible reply.**
+- **Second example story: Karpathy's "Land or Water?" eval** in three user steps: (1) 10° grid, 648 asks, one pixel per
+  answer; (2) the orchestrator's suggestion: full 2° grid, 16,200 asks, shade by P(Land), area-weighted accuracy against a
+  land mask next to the always-Water baseline (71.1%); (3) the orchestrator's suggestion: error map, score card and the
+  three worst regions. The orchestrator also writes `evals/leaderboard.md`. Its fourth suggestion (k = 5 samples per point,
+  pass@5 and pass^5 per cell) links the two stories.
+- **Verifiers** (owner answer 2): each project keeps its pattern checks and adds exactly one **F2P** check and one
+  **rubric** check. The F2P check runs the artifact's numbers and must first fail on a known-bad reference (self-test
+  recorded in `verifiers/run-NN.checks.js`): pass@k probes the chart's own formulas at p = 0.8, k = 3; Land-or-Water scores
+  the map against the land mask and must beat always-Water. The rubric is graded 1–5 by the orchestrator, pass at 4.
+- **Orchestrator** (owner answer 1): automatic after every run, Opus 5.5 at low effort, switching to a free local model
+  (gpt-oss:20b through Ollama) when the spend cap is $0 or reached. `harness.yaml` records the choice.
+- **Repo window docks on the right** (owner answer 3). The suggestion stays something you accept (question 4 unanswered).
+- Every v6 change is a flag with the v5 behaviour as the other option: `workspace`, `menuBar`, `timeline`, `ttScroll`,
+  `orchModel`, `checkKinds`.
+
+### Implications for the PoC backend
+- One server-side state store per project; the workspace lists projects and their status (running, needs you, idle) so the
+  canvas can show many long-running projects without loading every one in full.
+- Verifier kinds become a schema: `pattern`, `f2p` (executable, with a reference that must fail), `rubric` (model-graded,
+  with a threshold). Results per tab per run stay in `evals/run-NN.json`.
+- Land-or-Water needs batch asks (16,200 per model per run), token probabilities where the API returns them, and a
+  k-sample fallback where it does not.

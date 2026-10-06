@@ -430,3 +430,81 @@
   tag and the GitHub Release in one step from that commit (Releases → Draft a new release → new tag
   `prototype/multi-ai-frontend` on target `prototype/multi-ai-frontend`). Git then warns that the name is ambiguous
   between branch and tag; deleting the branch afterwards removes the warning.
+
+---
+
+## 2026-10-06 — v0.3 WIP: project windows, canvas, menu bar, Land-or-Water story (prompt 0016)
+
+### Decisions taken without asking
+- **D-75 (correction to D-71 and D-74) No release.** The owner said a release is not needed. The local annotated tag was not
+  pushed and no GitHub Release was made. The branch `prototype/multi-ai-frontend` (43df54b) is left on the remote because
+  deleting a remote branch is not reversible from here; the owner can delete it.
+- **D-76 "Duplicate this branch"** = a new branch at the head of `claude/cool-hawking-d5q52e` (33920dc), pushed as
+  `prototype/v0.2-multi-ai-frontend-stub`. New work is on `prototype/v0.3-wip-eval-story`, mirrored to the session branch
+  `claude/cool-hawking-d5q52e`.
+- **D-77 Project windows are iframes** that each load a copy of the project app from a `<template>` in the same file
+  (srcdoc). Each project gets isolated state without refactoring the 2,300-line app's global state. The shell and projects
+  talk through `postMessage`: `status`, `cmd`, `flag`, `key`, `wheel`, `focus`, `chrome`. Flags stay shared through the
+  `mai-flags` localStorage key.
+- **D-78 "p2f" read as fail-to-pass (F2P)**, the SWE-bench term for a test that fails before and passes after. Each F2P check
+  must fail on a known-bad reference before it is trusted; the self-test result is written into the verifiers file. If
+  the owner meant pass-to-fail (a regression check), the same machinery flips easily.
+- **D-79 Land-or-Water answers are simulated but scored for real.** Ground truth is Natural Earth 1:50m land
+  (`world-atlas`), sampled with `d3-geo` at the 16,200 centres of a 2° grid and embedded as a 2.7 KB bitmask. Each model's
+  "knowledge" is the mask blurred by a model-specific radius, plus smooth noise and a bias. Area-weighted always-Water is
+  71.1%, the figure quoted for the original eval. qwen3:8b was tuned below that baseline (68.6%), echoing the reported
+  finding that small open models can score below always-Water.
+- **D-80 The three user steps**: step 1 is the user's own prompt (10° grid); steps 2 and 3 are the orchestrator's
+  suggestions. The suggestion after step 3 (k = 5 samples, pass@5 and pass^5 per cell) links back to the pass@k story.
+- **D-81 Canvas seeds three projects**: Land or Water? (all three steps done), pass@k vs pass^k (as in v5), and
+  "Land or Water? · guided from step 1", so the owner can click the two suggestions and watch the story build.
+- **D-82 Orchestrator model** (owner answer 1): Opus 5.5 at low effort (output and thinking tokens × 0.45 in the cost model);
+  the free local gpt-oss:20b when the cap is $0 or reached.
+- **D-83 Seeded a formula bug in qwen3's run-4 chart** (1 − (1 − p)·k instead of 1 − (1 − p)^k), so the pass@k F2P probe has
+  a real failure to catch. The pattern check C5 misses it, which shows why executable checks matter.
+- **D-84 Land-or-Water spend cap is $2.00** because the 16,200-point artifacts cost more output tokens than chat replies.
+- **D-85 Menu bar contents** follow macOS conventions, and commands act on the current project (blue ring). "Needs you"
+  means the project is idle and has an orchestrator suggestion waiting.
+- **D-86 Phones**: under 720 px the canvas starts focused on the first project, and the menu bar keeps File, View and Window.
+- **D-87 Question 4 (suggestion behaviour) is still unanswered**: suggestions stay something you accept. The timeline's ghost
+  card adds "Use and send" as a one-click shortcut, but nothing sends on its own.
+
+### Evaluations performed
+- **E-18** `npm test` passes. `npm run check:mockup`: 29 of 29 checks pass. The new checks cover:
+  - the workspace: 3 windows, 6 menus, the needs-you count, zoom and fit;
+  - the Land-or-Water timeline: 3 steps, 2 of them suggestions, 12 thumbnails;
+  - F2P pass and fail on the maps, and rubric grades;
+  - playback scrolling every pane to the bottom;
+  - the pass@k flows from v5, now inside a project window, including the F2P failure on qwen3;
+  - the v5 single-project layout behind flags;
+  - 400 px with no horizontal scroll;
+  - no errors in any frame.
+- **E-19 Land-or-Water scores (area-weighted)**: Opus 5.5 96.1%, GPT-5 92.8%, Gemini 2.5 Pro 89.9%, qwen3:8b 68.6%,
+  always-Water 71.1%. Checks per run: 8 of 12, 17 of 20, 27 of 28. Run 1 has no scores, so the rubric fails it, which is
+  the reason the orchestrator gives for step 2.
+- **E-20** Drove the guided replay end to end in Playwright:
+  - two clicks on "Use and send" produced steps 2 and 3;
+  - the project's status went from running to needs you;
+  - playing back step 1 left every pane at 0 px from the bottom.
+
+### Bugs found (fixed)
+- **B-25** In narrower projects the toolbar wraps and the floating repo window covered the Artifacts button (found by the smoke
+  test). The repo window now starts below the tab strip.
+- **B-26** `scrollIntoView` inside a project also scrolled the shell's `overflow:hidden` canvas, which pushed the zoom controls
+  off-screen on phones. The shell now uses `overflow: clip` and resets any scroll; the ribbon scrolls itself.
+- **B-27** Docking the repo window in an embedded project did not shrink the browser, because a later CSS rule overrode the
+  docked width (found by the smoke test).
+- **B-28** During playback the pane title showed the latest prompt; it now shows the prompt of the viewed run.
+- **B-29** After the instant opening runs, panes stayed scrolled to run 1; they now start at the latest reply.
+
+### Loopholes / risks
+- **L-29** Each project window runs a full copy of the app, so memory and timers grow with the number of projects. The
+  real app should share one state store per project, render off-screen projects as snapshots, and pause their streams.
+- **L-30** The maps are simulations, not model outputs. The numbers illustrate the eval and do not rank real models.
+- **L-31 Cost is understated for this story.** 16,200 asks of about 25 input tokens each is about 405K input tokens per model
+  per run (about $1.62 on Opus 5.5 before output and thinking). The mockup charges only the reply. Batch pricing and prompt
+  caching would matter in the PoC.
+- **L-32** Not every API returns token probabilities, especially for reasoning models. P(Land) then needs k samples per
+  point, which multiplies the cost. Listed as an open question in the story's spec.
+- **L-33** x.com is blocked here, so the tweet was read from search snippets. Details beyond its text, such as the exact grid
+  or the plotted image, are inferred: 16,200 = 180 × 90 suggests a 2° grid.

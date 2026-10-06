@@ -1,7 +1,160 @@
-<title>Variant Windows</title>
+<title>multi-ai workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Workspace shell (v6): a macOS-style menu bar over an infinite canvas. Each project is a window on the canvas holding
+   one copy of the project app (template below) in an iframe, so projects run side by side without sharing state. */
+:root{
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --bar-bg:rgba(248,250,251,.9); --bar-fg:#1b2126; --bar-muted:#59636c; --bar-line:rgba(20,30,40,.12);
+  --canvas:#d9e1e4; --dots:rgba(30,50,60,.16);
+  --chrome:#e8eaed; --chrome-2:#dcdfe3; --chrome-fg:#262b31; --chrome-muted:#69727b; --chrome-line:#c5cad0;
+  --panel:#ffffff; --panel-2:#f3f5f7; --fg:#1b2126; --muted:#5b656e; --line:#d7dce1;
+  --accent:#1f6fd1; --accent-fg:#ffffff; --run:#8a5f00; --run-soft:#fff0bf; --run-ring:#e8ad00; --ok:#137a39; --ok-soft:#d6f2df; --ok-ring:#2aa75c;
+  --orch:#6d55c4; --orch-soft:#ece8fb; --dbg:#c026d3;
+  --shadow:0 18px 40px rgba(15,25,35,.22),0 1px 3px rgba(15,25,35,.16); --scrim:rgba(12,18,24,.45);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bar-bg:rgba(28,31,35,.9); --bar-fg:#eef1f3; --bar-muted:#a3acb4; --bar-line:rgba(255,255,255,.10);
+    --canvas:#1b2328; --dots:rgba(200,220,230,.12);
+    --chrome:#2b2e33; --chrome-2:#232629; --chrome-fg:#e7eaed; --chrome-muted:#9aa3ab; --chrome-line:#41464d;
+    --panel:#1f2226; --panel-2:#272a2f; --fg:#e9ecef; --muted:#a2abb3; --line:#3a3f45;
+    --accent:#5ea2ff; --accent-fg:#0b1420; --run:#f2c14b; --run-soft:#3d310b; --ok:#56d68b; --ok-soft:#113321; --ok-ring:#2fb164;
+    --orch:#a593e8; --orch-soft:#2a2440; --dbg:#e879f9;
+    --shadow:0 18px 40px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4); --scrim:rgba(0,0,0,.6); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bar-bg:rgba(28,31,35,.9); --bar-fg:#eef1f3; --bar-muted:#a3acb4; --bar-line:rgba(255,255,255,.10);
+  --canvas:#1b2328; --dots:rgba(200,220,230,.12);
+  --chrome:#2b2e33; --chrome-2:#232629; --chrome-fg:#e7eaed; --chrome-muted:#9aa3ab; --chrome-line:#41464d;
+  --panel:#1f2226; --panel-2:#272a2f; --fg:#e9ecef; --muted:#a2abb3; --line:#3a3f45;
+  --accent:#5ea2ff; --accent-fg:#0b1420; --run:#f2c14b; --run-soft:#3d310b; --ok:#56d68b; --ok-soft:#113321; --ok-ring:#2fb164;
+  --orch:#a593e8; --orch-soft:#2a2440; --dbg:#e879f9;
+  --shadow:0 18px 40px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4); --scrim:rgba(0,0,0,.6); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--canvas);color:var(--fg);font-family:var(--font-ui);font-size:13px;overflow:hidden}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ws{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;overflow:clip}
+.wbar{position:relative;z-index:50;display:flex;align-items:center;gap:4px;min-height:30px;padding:2px 12px;background:var(--bar-bg);color:var(--bar-fg);border-bottom:1px solid var(--bar-line);backdrop-filter:blur(14px);font-size:13px;white-space:nowrap}
+.wbar .logo{font-weight:700;padding:0 8px 0 2px}
+.menus{display:flex;align-items:center;gap:1px;min-width:0;overflow:hidden}
+.mtop{border:0;background:transparent;padding:3px 9px;border-radius:5px;cursor:default;font-size:13px}
+.mtop:hover,.mtop[aria-expanded="true"]{background:var(--bar-line)}
+.wbar .spacer{flex:1}
+.wbar .stat{font-size:12px;color:var(--bar-muted);padding:0 6px;font-variant-numeric:tabular-nums}
+.wbar .stat b{color:var(--bar-fg);font-weight:600}
+.needs{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--orch);color:var(--orch);background:transparent;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.needs::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.needs.none{border-color:var(--bar-line);color:var(--bar-muted);font-weight:500;cursor:default}
+.ws.plain .menus{display:none}
+.ws.single.plain .wbar{display:none}
+.mpop{position:absolute;z-index:200;min-width:250px;max-width:min(420px,calc(100vw - 16px));padding:5px;background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);font-size:13px}
+.mpop button{display:flex;align-items:center;gap:10px;width:100%;padding:5px 9px;border:0;border-radius:5px;background:transparent;text-align:left;cursor:default}
+.mpop button:hover:not(:disabled),.mpop button:focus-visible{background:var(--accent);color:var(--accent-fg);outline:none}
+.mpop button:disabled{opacity:.45}
+.mpop .ck{width:14px;flex:none;text-align:center}
+.mpop .lb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.mpop kbd{font:11px var(--font-mono);opacity:.7}
+.mpop .sub{font-size:11px;opacity:.75}
+.mpop hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
+.mpop .sec{padding:4px 9px 2px;font-size:11px;color:var(--muted)}
+
+.canvas{position:relative;flex:1;min-height:0;overflow:hidden;overflow:clip;background-color:var(--canvas);background-image:radial-gradient(var(--dots) 1px,transparent 1.4px);touch-action:none;cursor:grab}
+.canvas.panning{cursor:grabbing}
+.world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.pw{position:absolute;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:var(--chrome);box-shadow:var(--shadow),0 0 0 1px var(--chrome-line);cursor:default}
+.pw.current{box-shadow:var(--shadow),0 0 0 3px var(--accent)}
+.pw.collapsed{height:auto!important}
+.pw.collapsed .pw-body,.pw.collapsed .pw-resize{display:none}
+.pw-bar{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;background:var(--chrome-2);border-bottom:1px solid var(--chrome-line);cursor:grab;user-select:none;touch-action:none;flex:none;font-size:14px}
+.pw-bar:active{cursor:grabbing}
+.lights{display:flex;gap:8px;flex:none}
+.light{position:relative;width:13px;height:13px;border-radius:50%;border:0;padding:0;cursor:pointer}
+.light.close{background:#ff5f57}.light.min{background:#febc2e}.light.max{background:#28c840}
+.light::after{content:attr(data-glyph);position:absolute;inset:0;display:grid;place-items:center;font:700 10px/1 var(--font-ui);color:rgba(0,0,0,.6);opacity:0}
+.lights:hover .light::after,.light:focus-visible::after{opacity:1}
+.pw-title{font-weight:650;color:var(--chrome-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pill{flex:none;display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:650;background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill[data-s="running"]{background:var(--run-soft);color:var(--run);border-color:var(--run-ring)}
+.pill[data-s="running"]::before{animation:pulse 1s ease-in-out infinite}
+.pill[data-s="needs"]{background:var(--orch-soft);color:var(--orch);border-color:var(--orch)}
+.pill[data-s="idle"]{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-ring)}
+.pw-meta{margin-left:auto;font:12px var(--font-mono);color:var(--chrome-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pw-focus{flex:none;border:1px solid var(--chrome-line);background:var(--panel);border-radius:6px;padding:2px 9px;font-size:12px;cursor:pointer}
+.pw-body{position:relative;flex:1;min-height:0}
+.pw-body iframe{display:block;width:100%;height:100%;border:0;background:var(--chrome)}
+.pw-shield{position:absolute;inset:0;display:none;cursor:zoom-in;background:transparent}
+.ws.far .pw-shield{display:block}
+.pw-resize{position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 0 55%,var(--chrome-line) 55% 62%,transparent 62% 72%,var(--chrome-line) 72% 79%,transparent 79%)}
+.ws.dragging iframe{pointer-events:none}
+@keyframes pulse{50%{opacity:.35}}
+
+.zoomctl{position:absolute;right:14px;bottom:14px;z-index:40;display:flex;align-items:center;gap:2px;padding:4px;border-radius:10px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:var(--shadow),0 0 0 1px var(--bar-line)}
+.zoomctl button{min-width:30px;height:28px;border:0;border-radius:7px;background:transparent;cursor:pointer;font-size:14px;color:var(--bar-fg)}
+.zoomctl button:hover{background:var(--bar-line)}
+.zoomctl .pct{min-width:52px;font:12px var(--font-mono)}
+.hintbar{position:absolute;left:14px;bottom:14px;z-index:40;max-width:calc(100% - 290px);padding:5px 10px;border-radius:9px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:0 0 0 1px var(--bar-line);color:var(--bar-muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws.single .zoomctl,.ws.single .hintbar{display:none}
+.ws.single .canvas{background-image:none;cursor:default}
+.ws.single .world{transform:none!important;width:100%;height:100%}
+.ws.single .pw{display:none}
+.ws.single .pw.current{display:flex;left:0!important;top:0!important;width:100%!important;height:100%!important;border-radius:0;box-shadow:none}
+.ws.single .pw.current .pw-resize{display:none}
+.ws.single.plain .pw.current .pw-bar{display:none}
+.wtoast{position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px);padding:8px 10px 8px 14px;border-radius:10px;background:var(--fg);color:var(--panel);font-size:13px;box-shadow:var(--shadow)}
+.wtoast button{border:0;border-radius:6px;padding:3px 10px;background:var(--panel);color:var(--fg);cursor:pointer;font-size:12px;flex:none}
+.wsheet{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:16px;background:var(--scrim)}
+.wsheet>div{width:100%;max-width:620px;max-height:86%;overflow:auto;padding:18px 20px;background:var(--panel);border-radius:14px;box-shadow:var(--shadow);line-height:1.5}
+.wsheet h2{margin:0 0 8px;font-size:17px}
+.wsheet table{width:100%;border-collapse:collapse;font-size:13px}
+.wsheet td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.wsheet td:first-child{font:12px var(--font-mono);white-space:nowrap;color:var(--accent)}
+.wsheet ul{padding-left:18px;margin:0 0 10px}
+.wsheet .row{display:flex;justify-content:flex-end;margin-top:12px}
+.wsheet .row button{border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600}
+.ws.dbg [data-dbg]{outline:1px dashed var(--dbg);outline-offset:-1px}
+.ws.dbg .wbar [data-dbg],.ws.dbg .zoomctl,.ws.dbg .pw-bar{position:relative}
+.ws.dbg [data-dbg]::after{content:attr(data-dbg);position:absolute;left:2px;top:2px;z-index:999;padding:1px 5px;border-radius:3px;background:var(--dbg);color:#fff;font:600 10px/1.35 var(--font-mono);pointer-events:none;white-space:nowrap}
+.ws.dbg .pw[data-dbg]::after{top:44px}
+@media (max-width:720px){
+  .menus [data-m="edit"],.menus [data-m="project"],.menus [data-m="help"],.wbar .stat,.hintbar{display:none}
+  .wbar{gap:2px;padding:2px 8px}
+  .pw-meta{display:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="ws" id="ws">
+  <div class="wbar" data-dbg="shell-menubar">
+    <span class="logo">◆ multi-ai</span>
+    <nav class="menus" id="menus" aria-label="Menu bar"></nav>
+    <span class="spacer"></span>
+    <button type="button" class="needs none" id="needsBtn" data-dbg="needs-you" title="Jump to the next project that is waiting for you">0 need you</button>
+    <span class="stat" id="wsSpend" title="Total spend across all projects"></span>
+    <span class="stat clock" id="wsClock"></span>
+  </div>
+  <div class="canvas" id="canvas" data-dbg="canvas">
+    <div class="world" id="world"></div>
+    <div class="hintbar" id="hintbar">Drag empty space to pan · ⌘/Ctrl + scroll to zoom · double-click a title bar to focus a project</div>
+    <div class="zoomctl" data-dbg="zoom-controls" role="group" aria-label="Zoom">
+      <button type="button" id="zOut" aria-label="Zoom out" title="Zoom out (⌘/Ctrl −)">−</button>
+      <button type="button" class="pct" id="zPct" title="Zoom to 100% on the current project">50%</button>
+      <button type="button" id="zIn" aria-label="Zoom in" title="Zoom in (⌘/Ctrl +)">+</button>
+      <button type="button" id="zFit" title="Fit every project (⌘/Ctrl 0)">Fit all</button>
+    </div>
+  </div>
+</div>
+
+<template id="projectTemplate">
 <style>
 /* Layout: a macOS remote desktop. One browser: prompt bar on top, variant tabs below it, panes side by side.
    Floating windows (the experiment repo and any number of file/artifact viewers) move anywhere on the screen
@@ -465,6 +618,41 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .app.dbg [data-dbg]:not(.fw):not(.dock):not(.browser){position:relative}
 .app.dbg [data-dbg^="pane:"]::after,.app.dbg [data-dbg^="pane-status"]::after,.app.dbg [data-dbg="toolbar-actions"]::after{left:auto;right:2px}
 .app.dbg [data-dbg]::after{content:attr(data-dbg);position:absolute;left:2px;top:2px;z-index:99999;padding:1px 5px;border-radius:3px;background:var(--dbg);color:#fff;font:600 10px/1.35 var(--font-mono);pointer-events:none;white-space:nowrap}
+/* v6 additions: project inside a canvas window, timeline ribbon, F2P and rubric checks */
+.app.embedded .menubar .app-name,.app.embedded .menubar .session,.app.embedded .menubar .clock,.app.embedded .foot{display:none}
+.app.embedded .menubar{min-height:28px}
+.app.embedded .desktop{background:var(--chrome-2)}
+.app.embedded .browser{top:8px;left:8px;bottom:8px}
+.app.embedded:not(.repo-docked) .browser{right:8px}
+.app.embedded .topbar .lights{display:none}
+.ck{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10.5px;font-weight:650;border:1px solid currentColor}
+.ck.fail{color:var(--stop)}
+.timeline{flex:none;display:flex;flex-direction:column;border-top:1px solid var(--chrome-line);background:var(--chrome-2)}
+.tl-head{display:flex;align-items:center;gap:10px;padding:5px 12px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.tl-head b{color:var(--fg);font-size:12.5px}
+.tl-head .sp{flex:1}
+.tl-head button{border:1px solid var(--chrome-line);background:var(--panel);border-radius:6px;padding:1px 8px;font-size:11.5px;cursor:pointer}
+.tl-steps{list-style:none;margin:0;padding:2px 12px 10px;display:flex;align-items:stretch;gap:0;overflow-x:auto}
+.timeline.collapsed .tl-steps{display:none}
+.tl-item{display:flex;flex:none}
+.tl-card{flex:0 0 auto;width:268px;display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-align:left;cursor:pointer;font-size:12px;color:var(--fg)}
+.tl-card:hover{border-color:var(--accent)}
+.tl-card[aria-current="step"]{box-shadow:0 0 0 2px var(--tt);border-color:var(--tt)}
+.tl-card.running{border-color:var(--run-ring);background:var(--run-soft)}
+.tl-card.future{opacity:.4}
+.tl-card.next{border-style:dashed;border-color:var(--k-orch);cursor:default;width:240px}
+.tl-top{display:flex;align-items:center;gap:6px;min-width:0}
+.tl-top .n{font-weight:700}
+.tl-src{font-size:10.5px;padding:0 7px;border-radius:999px;background:var(--panel-2);color:var(--muted);white-space:nowrap}
+.tl-src.orch{background:transparent;color:var(--k-orch);border:1px solid var(--k-orch)}
+.tl-prompt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;color:var(--fg)}
+.tl-thumbs{display:flex;flex-wrap:wrap;gap:4px;min-height:34px;align-items:center}
+.tl-thumbs img,.tl-thumbs canvas{width:56px;height:28px;border-radius:3px;box-shadow:0 0 0 1px var(--line);image-rendering:pixelated}
+.tl-thumbs .chipa{font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--panel-2);color:var(--muted);white-space:nowrap}
+.tl-meta{font:10.5px var(--font-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-arrow{flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;padding:0 6px;color:var(--k-orch);font-size:10.5px;line-height:1.2;text-align:center;width:64px}
+.tl-arrow i{font-style:normal;font-size:18px}
+.tl-next-row{display:flex;gap:6px}
 @media (max-width:720px){.flabel .hint,.ver{display:none}}
 @media (max-width:720px){
   .menubar{gap:10px;overflow:hidden}
@@ -484,7 +672,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 <div class="app" id="app">
   <div class="menubar" data-dbg="menu-bar">
     <span class="app-name">multi-ai harness</span>
-    <span class="ver" id="ver" title="Mockup version. Earlier versions are listed in Flags.">mockup v5</span>
+    <span class="ver" id="ver" title="Mockup version. Earlier versions are listed in Flags.">mockup v6</span>
     <span class="session">vnc://harness-01 · macOS VM · tabs call provider APIs</span>
     <span class="spacer"></span>
     <span class="budget" id="budget" data-dbg="spend-cap" title="Spend cap for paid tabs. Free tabs (local open models) are never blocked by it.">
@@ -536,6 +724,10 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
       </div>
       <div class="capbar" id="capbar" data-dbg="cap-banner" hidden></div>
       <div class="panes" id="panes" data-dbg="panes"></div>
+      <div class="timeline" id="timeline" data-dbg="timeline" hidden>
+        <div class="tl-head"><b>Timeline</b><span id="tlSub"></span><span class="sp"></span><button type="button" id="tlToggle" aria-expanded="true">Hide</button></div>
+        <ol class="tl-steps" id="tlSteps"></ol>
+      </div>
     </div>
   </div>
   <div class="dock" id="dock" data-dbg="dock-bar" hidden></div>
@@ -562,7 +754,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const pad = (n) => String(n).padStart(2, '0');
 const MAX_TABS = 5;
-const MOCKUP = 'v5';
+const MOCKUP = 'v6';
+const PROJ = Object.assign({ id: 'p1', story: 'passk', start: 'full', embedded: false, title: null }, window.MAI_PROJECT || {});
+const IN_SHELL = window.parent !== window;
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
 const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'];
 const OAI_EFFORT = ['minimal', 'low', 'medium', 'high'];
@@ -685,6 +879,12 @@ const FLAG_DEFS = [
   { key: 'orchestrator', label: 'Orchestrator after each run', opts: { on: 'Summary + spec, verifiers, next prompt', off: 'Off (v4)' }, def: 'on', note: 'Applies to the next run.' },
   { key: 'artifactsWindow', label: 'Artifacts window', opts: { on: 'Compare-all window with its own tabs', off: 'Off: one window per file (v4)' }, def: 'on' },
   { key: 'debugIds', label: 'Element names overlay', opts: { off: 'Hidden', on: 'Shown on the page' }, def: 'off', note: 'Also visible in devtools as data-dbg attributes.' },
+  { key: 'workspace', label: 'Workspace', opts: { canvas: 'Project windows on a zoomable canvas', single: 'One project fills the screen (v5)' }, def: 'canvas', v6: true, note: 'View › Zoom to fit, or ⌘/Ctrl + scroll, zooms the canvas.' },
+  { key: 'menuBar', label: 'Menu bar', opts: { menus: 'File, Edit, View, Project, Window, Help', plain: 'Plain strip (v5)' }, def: 'menus', v6: true },
+  { key: 'timeline', label: 'Timeline ribbon', opts: { on: 'Step cards under the panes', off: 'Hidden (v5)' }, def: 'on', v6: true, note: 'Click a step to play it back.' },
+  { key: 'ttScroll', label: 'Panes during playback', opts: { bottom: 'Scroll every pane to its latest reply', keep: 'Keep the scroll position (v5)' }, def: 'bottom', v6: true },
+  { key: 'orchModel', label: 'Orchestrator model', opts: { auto: 'Opus 5.5, low effort; free local model at a $0 cap', opus: 'Opus 5.5, default effort, always (v5)' }, def: 'auto', v6: true, note: 'Owner answer to question 1. Applies to the next run.' },
+  { key: 'checkKinds', label: 'Verifier kinds', opts: { full: 'Pattern checks + one F2P probe + one rubric grade', pattern: 'Pattern checks only (v5)' }, def: 'full', v6: true, note: 'Owner answer to question 2. Applies to the next run.' },
 ];
 const ELEMENTS = [
   ['menu-bar', 'Top strip: app name, mockup version, spend cap, Flags, clock'],
@@ -717,13 +917,25 @@ const ELEMENTS = [
   ['file-window', 'A single file in its own window'],
   ['dock-bar', 'Minimized windows'],
   ['flags-window', 'Flags & element names window'],
+  ['timeline', 'Timeline ribbon: one card per step, newest on the right'],
+  ['timeline-step:N', 'One step card, e.g. timeline-step:2'],
+  ['timeline-next', "Ghost card with the orchestrator's next suggestion"],
+  ['shell-menubar', 'Top bar of the whole workspace: menus, needs-you count, total spend, clock'],
+  ['menu:NAME', 'One menu, e.g. menu:file, menu:view'],
+  ['canvas', 'Infinite canvas that holds the project windows; drag empty space to pan'],
+  ['zoom-controls', 'Zoom out, zoom level, zoom in, fit all'],
+  ['project-window:ID', 'One project window, e.g. project-window:landwater'],
+  ['project-titlebar', "A project window's title bar: lights, name, status, metrics"],
+  ['project-status', 'Status pill: running, needs you, up to date'],
+  ['needs-you', 'Menu bar button that jumps to the next project waiting for you'],
 ];
 const HISTORY = [
   ['v1', '312e3a8', 'A browser window per variant on a desktop'],
   ['v2', '296579c', 'One browser with variant tabs; repo as diffs'],
   ['v3', '3e60f4f', 'Free tabs past the cap; floating repo; inline artifacts; export'],
   ['v4', '55d3ace', 'Time travel; reset; movable windows; prompt above tabs'],
-  ['v5', 'f64f0a7 · tag prototype/multi-ai-frontend', 'Docking, step-by-step changes, playback look, artifacts window, prompt history and suggestions, Ctrl+Enter, orchestrator, flags'],
+  ['v5', 'f64f0a7 · branch prototype/v0.2-multi-ai-frontend-stub', 'Docking, step-by-step changes, playback look, artifacts window, prompt history and suggestions, Ctrl+Enter, orchestrator, flags'],
+  ['v6', 'see git log · branch prototype/v0.3-wip-eval-story', 'Project windows on a zoomable canvas, File/Edit/View menus, Land-or-Water story, timeline ribbon, F2P and rubric checks, cheaper orchestrator, panes scroll to latest in playback'],
 ];
 const F = {};
 FLAG_DEFS.forEach((d) => { F[d.key] = d.def; });
@@ -732,6 +944,13 @@ FLAG_DEFS.forEach((d) => { if (!(F[d.key] in d.opts)) F[d.key] = d.def; });
 function saveFlags() { try { localStorage.setItem('mai-flags', JSON.stringify(F)); } catch (e) {} }
 
 const ORCH = { name: 'Orchestrator', model: 'claude-opus-5-5', in: 4, out: 20 };
+// Owner answer to question 1: automatic after every run, Opus 5.5 at low effort, a free local model when the cap is $0.
+const ORCH_MODELS = {
+  opusLow: { model: 'claude-opus-5-5', label: 'Opus 5.5 · effort low', in: 4, out: 20, mult: 0.45 },
+  opus: { model: 'claude-opus-5-5', label: 'Opus 5.5 · effort medium', in: 4, out: 20, mult: 1 },
+  local: { model: 'gpt-oss:20b', label: 'gpt-oss:20b · Ollama (local, free)', in: 0, out: 0, mult: 1 },
+};
+function orchPick() { if (F.orchModel === 'opus') return ORCH_MODELS.opus; return st.cap === 0 || capReached() ? ORCH_MODELS.local : ORCH_MODELS.opusLow; }
 const MULT = { minimal: 0.15, low: 0.4, medium: 0.7, high: 1, xhigh: 1.4, max: 1.9, '4k': 0.4, '16k': 1, '32k': 1.6, dynamic: 0.9, '1k': 0.25, '8k': 0.8, '24k': 1.4, on: 1 };
 const GLYPH = { prompt: 'P', rerun: '↻', config: 'C', tool: 'T', mcp: 'M', run: 'R', stop: 'R', pending: 'R', init: 'I', restore: '↶', reset: '⟲', orch: '◆' };
 const SUGGEST = {
@@ -750,7 +969,7 @@ function chartArt(o) {
 <script>
 const P=document.getElementById('p'),c=document.getElementById('c'),x=c.getContext('2d'),V=document.getElementById('v');
 function line(f,col){x.strokeStyle=col;x.lineWidth=2;x.beginPath();for(let k=1;k<=50;k++){const X=20+(k-1)*6.7,Y=170-f(k)*150;k>1?x.lineTo(X,Y):x.moveTo(X,Y)}x.stroke()}
-function u(){const p=+P.value;V.textContent=p.toFixed(2);x.clearRect(0,0,360,190);x.strokeStyle='${o.grid}';x.strokeRect(20,20,330,150);line(k=>1-(1-p)**k,'${o.a}');line(k=>p**k,'${o.b}');x.fillStyle='${o.fg}';x.fillText('${o.legend}',24,14)}
+function u(){const p=+P.value;V.textContent=p.toFixed(2);x.clearRect(0,0,360,190);x.strokeStyle='${o.grid}';x.strokeRect(20,20,330,150);line(k=>${o.fa || '1-(1-p)**k'},'${o.a}');line(k=>p**k,'${o.b}');x.fillStyle='${o.fg}';x.fillText('${o.legend}',24,14)}
 P.oninput=u;u();
 <\/script>`;
 }
@@ -758,8 +977,280 @@ SAMPLE[V4] = {
   anthropic: { thought: 'Two sentences that explain the shapes, then one chart with both curves and a p slider. Keep the file small.', md: '**pass@k** = 1 − (1 − p)^k climbs toward 1 as k grows, because any one success is enough. **pass^k** = p^k falls toward 0, because every attempt has to succeed, and the chart shows how quickly the two separate.', art: chartArt({ title: 'pass@k vs pass^k, k = 1..50', font: 'Georgia,serif', bg: '#faf9f5', fg: '#29261b', grid: '#d8d3c4', a: '#bf5b37', b: '#3d6b8c', p: 0.8, legend: 'orange: pass@k   blue: pass^k   k = 1 to 50' }) },
   openai: { thought: 'Lead with the intuition, add one concrete number pair, then the chart.', md: 'pass@k rises with k since you only need one passing attempt out of k; pass^k drops with k since all k must pass. Move p to see the gap open up: at p = 0.9 and k = 20, pass@k ≈ 1.00 while pass^k ≈ 0.12.', art: chartArt({ title: 'pass@k chart', font: 'system-ui,sans-serif', bg: '#ffffff', fg: '#111', grid: '#ddd', a: '#10a37f', b: '#111111', p: 0.9, legend: 'green: pass@k   black: pass^k' }) },
   gemini: { thought: 'Could-it versus will-it again, now as two curves that start together at k = 1.', md: 'Pass@k is the chance that at least one of k tries works, so its curve rises; pass^k is the chance that all k work, so its curve decays. The two lines start together at k = 1 and then diverge for good.', art: chartArt({ title: 'Could it vs will it', font: 'system-ui,sans-serif', bg: '#ffffff', fg: '#202124', grid: '#dadce0', a: '#1b66d2', b: '#e8710a', p: 0.85, legend: 'blue: pass@k   orange: pass^k' }) },
-  open: { thought: 'chart, two lines, slider. short answer.', md: 'pass@k=1-(1-p)^k goes up. pass^k=p^k goes down. Chart below.', art: chartArt({ title: 'passk', font: 'monospace', bg: '#ffffff', fg: '#000', grid: '#ccc', a: '#d00', b: '#00d', p: 0.7, legend: 'red pass@k / blue pass^k' }) },
+  open: { thought: 'chart, two lines, slider. short answer.', md: 'pass@k=1-(1-p)^k goes up. pass^k=p^k goes down. Chart below.', art: chartArt({ title: 'passk', font: 'monospace', bg: '#ffffff', fg: '#000', grid: '#ccc', a: '#d00', b: '#00d', p: 0.7, fa: 'Math.max(0,1-(1-p)*k)', legend: 'red pass@k / blue pass^k' }) },
 };
+
+/* ---------- story 2: Karpathy's "Land or Water?" eval (simulated answers on a real land mask) ---------- */
+// Land mask: Natural Earth 1:50m land, sampled at the 16,200 centres of a 2° grid (row 0 = 89°N, col 0 = 179°W), 1 bit per cell.
+const LW_MASK_B64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAPgP8DAAAAAAAAAAAAAAAAAAAAAACM+/3//wcAAAAgBQACAAAAAAAAAAAAhPfw//8PAPAAAAAAwAMAAAAAAAAAwADEw////wEABAAAAADgAAAAAAAAAABQQT8A/v8PAAAAAAwA/D8AOAEAAAAAcBHvD8D/XwAAAAAgAP7/PwMAABCAAQD4w/4H8P8FAAAAAIJ7//9//xuAAP9ff2479QD/HwAA+A+EN/7//////3/g/////x88+B8AAOD/1//7////////jP////+/+AEfgAcAn9f//////////w/w/////wEs4AEAAHz+////////////gL////8HeAAcAADA5///////////9ADgAf7/f4AnAAAAEHb8////////H0AAAAhA//8f8AcAAIAB4////////38ABwAAAOj//5//AQAAHAT+////////B3AAAAAA/v//+z8AAGDj//////////8CAQAAAMD/////AwAA8P//////////LwAAAAAA4P///2MAAAD+//////////8AAAAAAAD///8/CAAA4P//ff//////JwAAAAAA8P///wYAAAD+/unz/////z8AAAAAAAD///8HAAAA/pgPPP//////MQAAAAAA8P//HwAAAMBD9v7n/////wcAAAAAAAD///8AAAAAPkD6P/7///8hEAAAAAAA4P//DwAAAIDBov/n////f8YAAAAAAAD8//8AAAAA+AdE//////8jDwAAAAAAgP//AwAAAMD/APD/////PxgAAAAAAADw/x8AAAAA/n/v//////8HAAAAAAAAAPwDAgAAAOD///v7////fwAAAAAAAACgHyAAAACA//9/f/7///8DAAAAAAAAAPQBAAAAAPj//+cP+P//HwAAAAAAAAAAHjAAAADA/////g////8EAAAAAAAAAOBhCAAAAPz//99/4B//AAAAAAAAAAAAPAMMAADA////+Qf44BcAAAAAAAAAAAA/AAAAAPz//78fgAf6QAAAAAAAAAAAAA8AAADg////ewA4gA8EAAAAAAAAAADAAAAAAPz//38BgAP4QQAAAAAAAAAAAAgOAADA////zwAwgAwQAAAAAAAAAAAA9Q8AAPj///8HAAFIAAAAAAAAAAAAAID/AQAA////fwBAAAAQAAAAAAAAAAAA+P8AAGDg//8DAAA0GAAAAAAAAAAAAID/HwAAAPj/HwAAgMIBAAAAAAAAAAAA/P8BAACA//8AAAA4XwAAAAAAAAAAAMD/fwAAAPz/BwAAAOOBAQAAAAAAAAAA/P8/AACA/z8AAABgLtQBAAAAAAAAAOD//w8AAPD/AwAAAAQAeAAAAAAAAAAA/P//AQAA/z8AAACAB4APAQAAAAAAAID//w8AAPD/AwAAAAARsEAAAAAAAAAA+P9/AAAA/j8AAAAAAAAAAAAAAAAAAAD//wcAAPD/QwAAAACAIwAAAAAAAAAA8P8/AAAA/z8EAAAAAD4GIAAAAAAAAAD8/wMAAPD/cQAAAAD4fwAAAAAAAAAAgP8/AAAA/w8HAAAAgP8HAAAAAAAAAAD4/wMAAOD/MAAAAAD//wEBAAAAAAAAgP8PAAAA/g8DAAAA+P8fAAAAAAAAAAD4PwAAAOB/MAAAAID//wMAAAAAAAAAgP8DAAAA/AMAAAAA+P9/AAAAAAAAAAD8HwAAAMA/AAAAAID//wcAAAAAAAAAwP8AAAAA+AEAAAAA8P9/AAAAAAAAAAD8DwAAAIAPAAAAAAAP/gMAAAAAAAAAwB8AAAAAAAAAAAAAEMAfAAAAAAAAAAD+AwAAAAAAAAAAAAAA8AEgAAAAAAAA4AcAAAAAAAAAAAAAAAAAAAYAAAAAAABeAAAAAAAAAAAAAAAAwAAwAAAAAAAAwAMAAAAAAAAAAAAAAAAIgAEAAAAAAAAeAAAAAAAAAAAAAAAAAAAMAAAAAAAA4AEAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAAAAAAAAAAABAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAA8AOD/j/sDAAAAAAAAAAA0AAAAAABA/P/h/////w8AAAAAAAAA0AcAAED4////z///////PwAAAAAADgPxAACA/////3////////8HAADA/wP//wMAAP7/////////////BwAA+P////8AAMD//////////////38AAOH/////wQAO/v//////////////BwAA/P////8PAPT//////////////z8AGPH//////+f/////////////////P/A/////////////////////////////////////////////////////////////////////////////////////////';
+const LW_W = 180, LW_H = 90, LW_N = LW_W * LW_H;
+const LW_A = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+const LW1 = 'Recreate Karpathy\'s "Land or Water?" eval: give the model a latitude and longitude as text, ask "Land or Water?", and plot every answer as one pixel of a world map. Start with a coarse 10° grid.';
+const LW2 = 'Now use the full 2° grid like the original: 180 × 90 = 16,200 asks at cell centres. Read P(Land) from the answer token\'s probabilities, shade each pixel by it, and report area-weighted accuracy against a land mask next to the always-"Water" baseline.';
+const LW3 = 'Keep the 2° map and add an error map under it (red where the answer disagrees with the land mask), then a score card: area-weighted accuracy, the always-Water baseline, and the three worst regions.';
+const LW4 = 'Ask every point 5 times and map pass@5 and pass^5 per cell, so we can see where each model is right every time, not just once.';
+// How each simulated model "knows" the planet: blur radius (cells), bias toward Land, smooth noise, sharpness.
+const LW_SPEC = { anthropic: { seed: 11, r: 1, bias: 0, noise: 0.13, sharp: 9 }, openai: { seed: 23, r: 2, bias: 0.03, noise: 0.17, sharp: 7 },
+  gemini: { seed: 37, r: 3, bias: 0, noise: 0.2, sharp: 6, polar: -0.1 }, open: { seed: 51, r: 7, bias: 0.2, noise: 0.3, sharp: 3, polar: -0.25 } };
+const LW_STYLE = { anthropic: { font: 'Georgia,serif', bg: '#faf9f5', fg: '#29261b', line: '#d8d3c4', land: [201, 150, 98], water: [61, 107, 140] },
+  openai: { font: 'system-ui,sans-serif', bg: '#ffffff', fg: '#111111', line: '#dddddd', land: [16, 163, 127], water: [31, 78, 121] },
+  gemini: { font: 'system-ui,sans-serif', bg: '#ffffff', fg: '#202124', line: '#dadce0', land: [52, 168, 83], water: [27, 102, 210] },
+  open: { font: 'monospace', bg: '#ffffff', fg: '#000000', line: '#cccccc', land: [0, 160, 0], water: [0, 0, 200] } };
+const LW_REGIONS = [['Greenland', 60, 84, -74, -10], ['the Canadian Arctic', 60, 84, -125, -60], ['Hudson Bay', 51, 64, -95, -76], ['the Caribbean', 10, 27, -90, -59],
+  ['the Andes and Patagonia', -56, -15, -80, -64], ['the Mediterranean', 30, 46, -6, 36], ['Scandinavia and the Baltic', 54, 71, 4, 31], ['the Sahara', 15, 32, -15, 32],
+  ['Arabia', 12, 32, 34, 60], ['Indonesia and the Philippines', -11, 20, 95, 141], ['Japan and Korea', 30, 46, 124, 146], ['Siberia', 55, 78, 60, 180], ['Australia', -40, -10, 112, 154],
+  ['the Antarctic coast', -80, -60, -180, 180], ['Southeast Asia', 0, 25, 92, 110], ['the Black and Caspian Seas', 36, 48, 27, 55], ['the Great Lakes', 40, 50, -93, -75], ['East Africa', -12, 12, 30, 52]];
+let lwMaskCache = null;
+function lwMask() { if (lwMaskCache) return lwMaskCache; const s = atob(LW_MASK_B64), m = new Uint8Array(LW_N); for (let i = 0; i < LW_N; i++) m[i] = (s.charCodeAt(i >> 3) >> (i & 7)) & 1; return (lwMaskCache = m); }
+function lwLat(i) { return 89 - Math.floor(i / LW_W) * 2; }
+function lwLon(i) { return -179 + (i % LW_W) * 2; }
+function lwRand(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function lwBlur(src, r) {
+  let a = Float32Array.from(src); if (r <= 0) return a;
+  const b = new Float32Array(LW_N);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < LW_H; y++) for (let x = 0; x < LW_W; x++) { let s = 0; for (let d = -r; d <= r; d++) s += a[y * LW_W + ((x + d + LW_W) % LW_W)]; b[y * LW_W + x] = s / (2 * r + 1); }
+    for (let y = 0; y < LW_H; y++) for (let x = 0; x < LW_W; x++) { let s = 0, n = 0; for (let d = -r; d <= r; d++) { const yy = y + d; if (yy < 0 || yy >= LW_H) continue; s += b[yy * LW_W + x]; n++; } a[y * LW_W + x] = s / n; }
+  }
+  return a;
+}
+function lwField(o) {
+  const mask = lwMask(), rnd = lwRand(o.seed), noise = new Float32Array(LW_N);
+  for (let i = 0; i < LW_N; i++) noise[i] = rnd() - 0.5;
+  const nz = lwBlur(noise, 3), b = lwBlur(mask, o.r), p = new Float32Array(LW_N);
+  let sd = 0; for (let i = 0; i < LW_N; i++) sd += nz[i] * nz[i]; sd = Math.sqrt(sd / LW_N) || 1;
+  for (let i = 0; i < LW_N; i++) { const polar = Math.abs(lwLat(i)) > 60 ? o.polar || 0 : 0; const v = b[i] + o.bias + polar + (nz[i] / sd) * o.noise; p[i] = 1 / (1 + Math.exp(-(v - 0.5) * o.sharp)); }
+  return p;
+}
+// Scorer used by the F2P verifier: plain and area-weighted (cos latitude) accuracy of P(Land) >= 0.5 against the mask.
+function lwScore(p) {
+  const mask = lwMask(); let ok = 0, wok = 0, wt = 0;
+  for (let i = 0; i < LW_N; i++) { const w = Math.cos(lwLat(i) * Math.PI / 180), hit = (p[i] >= 0.5 ? 1 : 0) === mask[i]; wt += w; if (hit) { ok++; wok += w; } }
+  return { acc: ok / LW_N, aw: wok / wt };
+}
+const LW_BASE = lwScore(new Float32Array(LW_N)).aw;   // always answering "Water": 71.1%
+function lwWorst(p) {
+  const mask = lwMask();
+  return LW_REGIONS.map(([name, la0, la1, lo0, lo1]) => {
+    let n = 0, bad = 0;
+    for (let i = 0; i < LW_N; i++) { const la = lwLat(i), lo = lwLon(i); if (la < la0 || la > la1 || lo < lo0 || lo > lo1) continue; n++; if ((p[i] >= 0.5 ? 1 : 0) !== mask[i]) bad++; }
+    return { name, n, rate: n ? bad / n : 0 };
+  }).filter((x) => x.n >= 10).sort((a, b) => b.rate - a.rate).slice(0, 3);
+}
+const lwCache = {};
+function lwResult(pid) {
+  if (lwCache[pid]) return lwCache[pid];
+  const p = lwField(LW_SPEC[pid]), s = lwScore(p), mask = lwMask();
+  let coarse = '', land10 = 0, ok10 = 0;
+  for (let la = 85; la >= -85; la -= 10) for (let lo = -175; lo <= 175; lo += 10) { const i = ((89 - la) / 2) * LW_W + (lo + 179) / 2, L = p[i] >= 0.5; coarse += L ? 'L' : 'W'; if (L) land10++; if ((L ? 1 : 0) === mask[i]) ok10++; }
+  let enc = ''; for (let i = 0; i < LW_N; i++) enc += LW_A[Math.min(63, Math.round(p[i] * 63))];
+  return (lwCache[pid] = { p, acc: s.acc, aw: s.aw, coarse, land10, acc10: ok10 / 648, enc, worst: lwWorst(p) });
+}
+const pct1 = (x) => (x * 100).toFixed(1);
+function lwArt(mode, pid) {
+  const S = LW_STYLE[pid], R = lwResult(pid), rgb = (c) => `rgb(${c.join(',')})`;
+  const head = `<!doctype html><meta charset="utf-8"><title>Land or Water? · ${mode === 1 ? '10° grid' : mode === 2 ? '2° grid' : 'error map'}</title>
+<style>body{font:13px ${S.font};margin:12px;background:${S.bg};color:${S.fg}}canvas{width:100%;max-width:560px;display:block;image-rendering:pixelated;border:1px solid ${S.line};margin:6px 0}small,#o{color:#777}table{border-collapse:collapse;margin-top:6px}td{padding:2px 10px 2px 0}.lg{display:flex;align-items:center;gap:6px;font-size:11px}.lg i{display:inline-block;width:120px;height:8px;background:linear-gradient(90deg,${rgb(S.water)},${rgb(S.land)})}</style>`;
+  if (mode === 1) return `${head}
+<b>Land or Water? · 648 asks on a 10° grid</b> <small id="o">hover the map</small>
+<canvas id="c" width="36" height="18"></canvas>
+<script>
+const D='${R.coarse}',c=document.getElementById('c'),x=c.getContext('2d');
+for(let i=0;i<648;i++){x.fillStyle=D[i]==='L'?'${rgb(S.land)}':'${rgb(S.water)}';x.fillRect(i%36,Math.floor(i/36),1,1)}
+c.onmousemove=e=>{const r=c.getBoundingClientRect(),cx=Math.min(35,Math.floor((e.clientX-r.left)/r.width*36)),cy=Math.min(17,Math.floor((e.clientY-r.top)/r.height*18));document.getElementById('o').textContent=(85-cy*10)+'°, '+(cx*10-175)+'° → '+(D[cy*36+cx]==='L'?'Land':'Water')}
+<\/script>`;
+  const stat = pid === 'open' && mode === 2 ? `accuracy ${pct1(R.acc)}%` : `area-weighted accuracy <b>${pct1(R.aw)}%</b> · always-Water baseline ${pct1(LW_BASE)}%`;
+  const draw = `const A='${LW_A}',D='${R.enc}',W=[${S.water}],L=[${S.land}];
+function shade(c){const x=c.getContext('2d'),im=x.createImageData(180,90);for(let i=0;i<16200;i++){const t=A.indexOf(D[i])/63;for(let k=0;k<3;k++)im.data[i*4+k]=Math.round(W[k]+(L[k]-W[k])*t);im.data[i*4+3]=255}x.putImageData(im,0,0)}
+function hover(c){c.onmousemove=e=>{const r=c.getBoundingClientRect(),cx=Math.min(179,Math.floor((e.clientX-r.left)/r.width*180)),cy=Math.min(89,Math.floor((e.clientY-r.top)/r.height*90)),i=cy*180+cx;document.getElementById('o').textContent=(89-cy*2)+'°, '+(cx*2-179)+'° → P(Land) '+(A.indexOf(D[i])/63).toFixed(2)+(window.M?' · truth '+(M(i)?'Land':'Water'):'')}}`;
+  if (mode === 2) return `${head}
+<b>Land or Water? · 16,200 asks on a 2° grid</b> <small id="o">hover the map</small>
+<canvas id="c" width="180" height="90"></canvas>
+<div class="lg">Water <i></i> Land · shaded by P(Land)</div><p>${stat}</p>
+<script>
+${draw}
+const c=document.getElementById('c');shade(c);hover(c);
+<\/script>`;
+  const w = R.worst.map((x) => `<li>${x.name}: ${pct1(x.rate)}% wrong</li>`).join('');
+  const beat = R.aw > LW_BASE;
+  return `${head}
+<b>Land or Water? · 16,200 asks · shaded map and error map</b> <small id="o">hover a map</small>
+<canvas id="c" width="180" height="90"></canvas>
+<div class="lg">Water <i></i> Land · shaded by P(Land)</div>
+<canvas id="e" width="180" height="90"></canvas>
+<div class="lg"><span style="color:#d0342c">■</span> wrong · <span style="color:#c8d3dc">■</span> right (water) · <span style="color:#c9d8bf">■</span> right (land)</div>
+<table><tr><td>Area-weighted accuracy</td><td><b>${pct1(R.aw)}%</b></td></tr><tr><td>Always-Water baseline</td><td>${pct1(LW_BASE)}%</td></tr><tr><td>Verdict</td><td>${beat ? `beats the baseline by ${((R.aw - LW_BASE) * 100).toFixed(1)} points` : `${((LW_BASE - R.aw) * 100).toFixed(1)} points below the baseline`}</td></tr></table>
+<p>Worst regions</p><ol>${w}</ol>
+<script>
+const MB=atob('${LW_MASK_B64}');window.M=i=>(MB.charCodeAt(i>>3)>>(i&7))&1;
+${draw}
+const c=document.getElementById('c'),e=document.getElementById('e');shade(c);hover(c);hover(e);
+const x=e.getContext('2d'),im=x.createImageData(180,90);
+for(let i=0;i<16200;i++){const p=A.indexOf(D[i])/63>=0.5?1:0,t=M(i),col=p!==t?[208,52,44]:t?[201,216,191]:[200,211,220];im.data.set([col[0],col[1],col[2],255],i*4)}
+x.putImageData(im,0,0);
+<\/script>`;
+}
+function lwThumb(mode, pid) {
+  const R = lwResult(pid), S = LW_STYLE[pid], c = document.createElement('canvas'), mask = lwMask();
+  c.width = mode === 1 ? 36 : 180; c.height = mode === 1 ? 18 : 90;
+  const x = c.getContext('2d'), im = x.createImageData(c.width, c.height);
+  for (let i = 0; i < c.width * c.height; i++) {
+    let col;
+    if (mode === 1) col = R.coarse[i] === 'L' ? S.land : S.water;
+    else if (mode === 2) { const t = R.p[i]; col = S.water.map((w, k) => Math.round(w + (S.land[k] - w) * t)); }
+    else { const p = R.p[i] >= 0.5 ? 1 : 0; col = p !== mask[i] ? [208, 52, 44] : mask[i] ? [201, 216, 191] : [200, 211, 220]; }
+    im.data.set([col[0], col[1], col[2], 255], i * 4);
+  }
+  x.putImageData(im, 0, 0);
+  c.title = `${PROVIDERS[pid].name}: ${mode === 1 ? `${R.land10} of 648 Land` : `area-weighted ${pct1(R.aw)}%`}`;
+  return c;
+}
+function lwReply(text, pid) {
+  const step = text === LW1 ? 1 : text === LW2 ? 2 : text === LW3 ? 3 : 0;
+  if (!step || !LW_SPEC[pid]) return null;
+  const R = lwResult(pid), aw = pct1(R.aw), base = pct1(LW_BASE), L = R.land10, sh = Math.round(L / 6.48);
+  const wst = R.worst.map((x) => x.name);
+  const worst = `${wst[0]}, ${wst[1]} and ${wst[2]}`;
+  const T = {
+    1: { anthropic: ['Ask once per 10° cell centre so the grid stays small: 36 × 18 = 648 prompts. Same wording every time; read only the first word.', `I asked **648** times, once per 10° cell centre (36 columns × 18 rows), with the exact prompt \`Land or Water? lat 45.0, lon -175.0\`, and drew one pixel per answer: tan for Land, blue for Water.\n\n${L} cells came back Land (${sh}%). The continents are recognisable, but at 10° the coasts are blocks, and nothing here says how good the map is yet.`],
+      openai: ['A 10° grid is 648 points. Temperature 0 keeps each answer stable.', `648 asks on a 10° grid at temperature 0, one per cell centre, plotted as an equirectangular map (green = Land, blue = Water). ${L} of 648 cells are Land (${sh}%). Hover a pixel to see its coordinates and answer.`],
+      gemini: ['Plate carrée map, 36 by 18 cells, one question each.', `Here is the coarse version: **648** questions, one per 10° cell, drawn as a 36 × 18 map. ${L} cells are Land (${sh}%). Even this coarse, Africa, the Americas and Antarctica stand out.`],
+      open: ['loop lat 85..-85 step 10, lon -175..175 step 10. take first word of answer.', `asked 648 points (10 deg grid). ${L} land, ${648 - L} water. 14 replies were not one word, counted as water. map below.`] },
+    2: { anthropic: ['16,200 prompts. Use the probability of " Land" against " Water" on the first token rather than the sampled word, so the map shows confidence.', `**16,200** asks at 2° cell centres (180 × 90). For each one I read the probability of \` Land\` against \` Water\` on the first answer token and shaded the pixel by P(Land).\n\nArea-weighted accuracy against the land mask is **${aw}%**, against **${base}%** for always answering Water. That baseline is the bar to clear, because about 71% of the planet's area is water.`],
+      openai: ['Weight each cell by cos(latitude) so polar cells do not dominate the score.', `All 16,200 points at 2°. Each pixel is shaded by P(Land) from the token log-probs, so uncertain coasts look blended. Area-weighted accuracy (each cell weighted by cos latitude): **${aw}%**. The always-Water baseline is **${base}%**.`],
+      gemini: ['Same grid as the original; shade by probability; compare with the trivial baseline.', `The full 2° grid, 16,200 asks, shaded by P(Land) from the answer probabilities. Area-weighted accuracy is **${aw}%** against **${base}%** for the always-Water baseline. Coasts blur and small islands fade out.`],
+      open: ['16200 points. logprobs for land vs water. count correct.', `16,200 points, 2 deg grid. shaded by P(Land) from logprobs. accuracy ${pct1(R.acc)}%.`] },
+    3: { anthropic: ['Reuse the same 16,200 answers. Red where the thresholded answer disagrees with the mask; rank regions by error rate.', `Same 16,200 asks. Under the shaded map, an error map marks in red every cell where the answer disagrees with the land mask.\n\nScore card: area-weighted accuracy **${aw}%** against the always-Water baseline of **${base}%**, so the map beats the baseline by ${((R.aw - LW_BASE) * 100).toFixed(1)} points. Worst regions: ${worst}.`],
+      openai: ['Error map first, then a three-row score card and the regions with the highest error rate.', `The 16,200 answers again, now with an error map (red = wrong). Area-weighted accuracy **${aw}%**, always-Water baseline **${base}%**. The worst regions are ${worst}.`],
+      gemini: ['Errors cluster at coasts and poles; rank boxes by error rate.', `Kept the 16,200-point shaded map and added an error map below it, with mistakes in red. Score card: area-weighted accuracy **${aw}%**, baseline **${base}%**. Worst regions: ${worst}.`],
+      open: ['error map. score card. worst 3 regions.', `16,200 points. error map in red. area-weighted accuracy ${aw}%, always-water baseline ${base}%: below the baseline. worst regions: ${worst}.`] },
+  }[step][pid];
+  return { thought: T[0], md: T[1], art: lwArt(step, pid), lw: R, lwMode: step };
+}
+const LW_RUBRIC = {
+  [LW1]: { anthropic: [3, 'Continents are clear, but nothing says how good the map is.'], openai: [3, 'Readable map; no score.'], gemini: [3, 'Recognisable; no score or baseline.'], open: [2, 'Blocky and unscored; unparsed replies were silently counted as Water.'] },
+  [LW2]: { anthropic: [5, 'Shaded map, legend and a score next to the baseline.'], openai: [4, 'Good map and score; the legend is small.'], gemini: [4, 'Clear score against the baseline; blurry coasts.'], open: [2, 'Plain accuracy with no baseline, so it looks better than it is.'] },
+  [LW3]: { anthropic: [5, 'The error map and worst regions make every mistake visible.'], openai: [5, 'Complete score card.'], gemini: [4, 'Complete, though polar errors are hard to read.'], open: [4, 'Honest now: the score card shows it is below the baseline.'] },
+};
+const PASSK_RUBRIC = {
+  [V1]: { anthropic: [4, 'Capability versus reliability tells a reader when each matters.'], openai: [4, 'Exploration versus reliability is a usable rule of thumb.'], gemini: [3, 'Explains both but never says when to prefer one.'] },
+  [V2]: { anthropic: [5, 'Contrast plus a worked example a reader can reuse.'], openai: [4, 'Consistency framing is clear; the example uses odd numbers.'], gemini: [4, 'Could-it versus will-it is memorable.'] },
+  [V3]: { anthropic: [4, 'Sliders show the gap; the when-to-use rule is implicit.'], openai: [4, 'The table makes the divergence obvious.'], gemini: [4, 'The bars make the contrast visible.'], open: [2, 'No guidance on when to use either metric.'] },
+  [V4]: { anthropic: [5, 'The curves make the trade-off obvious.'], openai: [4, 'The number pair helps.'], gemini: [4, 'Clear, but no rule for choosing.'], open: [2, 'Definitions are missing and the pass@k curve is wrong.'] },
+};
+function rubricGrade(table, prompt, t) {
+  const g = table[prompt] && table[prompt][t.pid];
+  if (g) return { score: g[0], why: g[1] };
+  const h = hash(prompt + t.model.id) % 3;
+  return { score: 3 + h, why: ['Answers the question but leaves the reader to infer when it applies.', 'Clear and usable.', 'Clear, specific and easy to check.'][h] };
+}
+// The pass@k F2P probe extracts the artifact's own pass@k and pass^k expressions and runs them at reference points.
+const PASSK_BUG = 'line(k=>Math.max(0,1-(1-p)*k));line(k=>p*k)';
+function probePassK(art) {
+  if (!art) return { ok: false, detail: 'no artifact to run' };
+  const a = art.replace(/\s+/g, ''), m1 = a.match(/1-\(1-p\)\*\*?k/), m2 = a.match(/(?:^|[^\w)])(p\*\*?k)/);
+  if (!m1 || !m2) return { ok: false, detail: 'could not find both formulas in the artifact' };
+  const f1 = new Function('p', 'k', `return ${m1[0]}`), f2 = new Function('p', 'k', `return ${m2[1]}`);
+  const a1 = Math.max(0, f1(0.8, 3)), b1 = f2(0.8, 3), ok = Math.abs(a1 - 0.992) < 1e-3 && Math.abs(b1 - 0.512) < 1e-3;
+  return { ok, detail: `at p = 0.8, k = 3 the artifact gives pass@k ${a1.toFixed(3)}, pass^k ${b1.toFixed(3)} (expected 0.992, 0.512)` };
+}
+const F2P_SELFTEST = { passk: () => !probePassK(PASSK_BUG).ok, landwater: () => !(lwScore(new Float32Array(LW_N)).aw > LW_BASE) };
+
+const STORIES = {
+  passk: {
+    title: 'pass@k vs pass^k', slug: 'pass-k-vs-pass-hat-k',
+    reply: (text, t) => SAMPLE[text] && SAMPLE[text][t.pid],
+    suggest: SUGGEST,
+    why: { [V1]: 'No answer gave numbers, so nothing could be verified. Ask for two sentences and a one-line example.', [V2]: 'Numbers are right but use different p and k. A calculator lets a reader try any p and k.', [V3]: 'All four calculators work; a chart over k = 1..50 shows how fast the two metrics separate.' },
+    openQ: '- Should every model use the same p and k in examples so numbers can be compared directly?',
+    extraCriteria(prompt) {
+      const C = [];
+      if (/calculator|html|chart|widget|page/i.test(prompt)) C.push({ id: 'F2P', kind: 'f2p', text: "F2P probe: the artifact's own formulas give pass@3 = 0.992 and pass^3 = 0.512 at p = 0.8 (the probe fails on the known bug 1 − (1 − p)·k)", test: (md, art) => probePassK(art) });
+      C.push({ id: 'R1', kind: 'rubric', text: 'Rubric, graded 1–5 by the orchestrator (pass at 4): a reader new to evals can tell when to report pass@k and when pass^k', test: (md, art, resp, t, prompt) => { const g = rubricGrade(PASSK_RUBRIC, prompt, t); return { ok: g.score >= 4, score: g.score, detail: `${g.score}/5 · ${g.why}` }; } });
+      return C;
+    },
+    open() {
+      addTab('anthropic', 'claude-opus-5-5', 'medium'); addTab('openai', 'gpt-5', 'medium'); addTab('gemini', 'gemini-2.5-pro', 'dynamic');
+      initRepo(this.slug);
+      send(V1, true);
+      st.tabs[0].reason = 'high'; buildControls(st.tabs[0]);
+      st.mcp.add('filesystem'); st.tabs.forEach((t) => buildControls(t)); $('#mcpCount').textContent = '1';
+      send(V2, true);
+      addTab('open', 'qwen3:8b');
+      send(V3, true);
+    },
+  },
+  landwater: {
+    title: 'Land or Water?', slug: 'land-or-water',
+    source: 'https://x.com/karpathy/status/2105909609487872075',
+    reply: (text, t) => lwReply(text, t.pid),
+    suggest: { [LW1]: LW2, [LW2]: LW3, [LW3]: LW4 },
+    why: { [LW1]: 'The maps are recognisable, but nothing says how good they are, and 648 asks cannot show coastlines. The original used 16,200 asks and compared them against the always-Water baseline.',
+      [LW2]: 'Scores exist now, and qwen3:8b falls below the always-Water baseline while its reply hides it. An error map and the worst regions show where each model is wrong.',
+      [LW3]: 'The eval is recreated: every model has a shaded map, an error map and a score against the baseline. Sampling each point k times links it to pass@k vs pass^k.' },
+    openQ: '- P(Land) needs token probabilities. For APIs that do not return them, sample each point k times instead?',
+    criteria(prompt) {
+      const C = [];
+      if (/10° grid/.test(prompt)) {
+        C.push({ id: 'L1', text: 'Asks every point of the 10° grid (648 asks)', test: (md) => /\b648\b/.test(md) });
+        C.push({ id: 'L2', text: 'Plots one pixel per answer on a world map', test: (md, art) => !!art && /<canvas/.test(art) });
+      }
+      if (/16,200|2° map/.test(prompt)) {
+        C.push({ id: 'L3', text: 'Uses all 16,200 points', test: (md) => /16,200/.test(md) });
+        C.push({ id: 'L4', text: 'Shades each pixel by P(Land), with a legend', test: (md, art) => !!art && /P\(Land\)/.test(art) && /class="lg"/.test(art) });
+        C.push({ id: 'L5', text: 'Reports area-weighted accuracy next to the always-Water baseline', test: (md) => /area-weighted/i.test(md) && /baseline/i.test(md) });
+      }
+      if (/error map/i.test(prompt)) {
+        C.push({ id: 'L6', text: 'Error map marks wrong cells in red', test: (md, art) => !!art && /id="e"/.test(art) });
+        C.push({ id: 'L7', text: 'Names the three worst regions', test: (md) => /worst/i.test(md) });
+      }
+      if (!C.length) C.push({ id: 'L0', text: 'Answers the prompt directly', test: (md) => md.trim().length > 0 });
+      return C;
+    },
+    extraCriteria(prompt) {
+      const C = [];
+      if (/16,200|2° map/.test(prompt)) C.push({ id: 'F2P', kind: 'f2p', text: `F2P scorer: area-weighted accuracy beats the always-Water baseline (${pct1(LW_BASE)}%). The scorer fails the all-Water map, so only a map that knows something passes`, test: (md, art, resp) => { if (!resp.lw) return { ok: false, detail: 'no map data' }; const s = lwScore(resp.lw.p); return { ok: s.aw > LW_BASE, detail: `area-weighted ${pct1(s.aw)}% vs baseline ${pct1(LW_BASE)}%` }; } });
+      C.push({ id: 'R1', kind: 'rubric', text: 'Rubric, graded 1–5 by the orchestrator (pass at 4): a reader can recognise the continents and tell how good the map is from the page alone', test: (md, art, resp, t, prompt) => { const g = rubricGrade(LW_RUBRIC, prompt, t); return { ok: g.score >= 4, score: g.score, detail: `${g.score}/5 · ${g.why}` }; } });
+      return C;
+    },
+    notes(run) {
+      const rows = run.tabs.filter(({ r }) => r.resp.lw);
+      if (!rows.length) return null;
+      if (run.prompt === LW1) {
+        const sh = rows.map(({ r }) => Math.round(r.resp.lw.land10 / 6.48));
+        return [`- All ${rows.length} drew a recognisable 10° map from 648 asks each; the Land share ranges ${Math.min(...sh)}–${Math.max(...sh)}%.`, '- Nothing is scored yet, and 10° cells cannot show coastlines.'];
+      }
+      const ranked = rows.slice().sort((a, b) => b.r.resp.lw.aw - a.r.resp.lw.aw);
+      const L = [`- Area-weighted accuracy: ${ranked.map(({ t, r }) => `${t.model.label.split(' · ')[0]} ${pct1(r.resp.lw.aw)}%`).join(', ')}. Always-Water: ${pct1(LW_BASE)}%.`];
+      const below = ranked.filter(({ r }) => r.resp.lw.aw <= LW_BASE);
+      if (run.prompt === LW2 && below.length) L.push(`- ${below.map(({ t }) => t.model.label.split(' · ')[0]).join(', ')} scores below always-Water (it reported plain accuracy, which hides that). The F2P scorer catches it.`);
+      if (run.prompt === LW3) L.push(`- Eval recreated. Ranking: ${ranked.map(({ t, r }) => `${t.model.label.split(' · ')[0]}${r.resp.lw.aw <= LW_BASE ? ' (below always-Water)' : ''}`).join(' > ')}.`, `- Errors cluster in ${rows[0].r.resp.lw.worst[0].name} and along coasts for every model.`);
+      return L;
+    },
+    leaderboard(run) {
+      const rows = run.tabs.filter(({ r }) => r.resp.lw && run.prompt !== LW1);
+      if (!rows.length) return null;
+      const L = ['# Land or Water? leaderboard', '', `After run ${run.no}. 16,200 asks per model on a 2° grid; area-weighted by cos(latitude).`, '', '| Rank | Model | Area-weighted | Plain | vs always-Water |', '|---|---|---|---|---|'];
+      const all = rows.map(({ t, r }) => ({ name: `${pad(t.id)} ${tabLabel(t)}`, aw: r.resp.lw.aw, acc: r.resp.lw.acc })).concat([{ name: 'always "Water" (baseline)', aw: LW_BASE, acc: lwScore(new Float32Array(LW_N)).acc, base: true }]);
+      all.sort((a, b) => b.aw - a.aw).forEach((x, i) => L.push(`| ${i + 1} | ${x.name} | ${pct1(x.aw)}% | ${pct1(x.acc)}% | ${x.base ? '–' : `${x.aw > LW_BASE ? '+' : ''}${((x.aw - LW_BASE) * 100).toFixed(1)}`} |`));
+      return L.join('\n');
+    },
+    thumb(run, t, r) { return r.resp.lw ? lwThumb(r.resp.lwMode, t.pid) : null; },
+    open() {
+      addTab('anthropic', 'claude-opus-5-5', 'medium'); addTab('openai', 'gpt-5', 'medium'); addTab('gemini', 'gemini-2.5-pro', 'dynamic'); addTab('open', 'qwen3:8b');
+      st.cap = 2; $('#cap').value = '2.00';   // 16,200-point maps cost more than chat replies
+      initRepo(this.slug);
+      send(LW1, true);
+      if (PROJ.start !== 'step1') { send(LW2, true); send(LW3, true); }
+    },
+  },
+  blank: {
+    title: 'Untitled experiment', slug: 'untitled', reply: () => null, suggest: {}, why: {},
+    openQ: '- What does a good answer look like? Write it down before the first run.',
+    open() { addTab('anthropic', 'claude-opus-5-5', 'medium'); addTab('openai', 'gpt-5', 'medium'); addTab('gemini', 'gemini-2.5-pro', 'dynamic'); initRepo(this.slug); },
+  },
+};
+const STORY = STORIES[PROJ.story] || STORIES.passk;
 
 const st = { tabs: [], closed: [], tabSeq: 0, cseq: 0, active: null, view: 'split', spend: 0, cap: 0.50, running: 0, runNo: 0, mcp: new Set(), head: null,
   commits: [], exp: null, takes: {}, files: new Map(), openFile: null, fileMode: 'preview', branch: 'main', branches: ['main'], rview: 'changes',
@@ -944,7 +1435,9 @@ function toYaml(s) {
   if (!s.tabs.length) L.push('  {}');
   L.push('mcp_servers:' + (s.mcp.length ? '' : ' {}'));
   s.mcp.forEach((n) => { const m = MCP_CATALOG.find((x) => x.name === n); L.push(`  ${n}:`, `    command: ${m.cmd}`, '    shared_with: all tabs'); });
-  L.push('orchestrator:', `  model: ${ORCH.model}`, '  after_each_run: [summary, spec, verifiers, next_prompt]');
+  if (F.orchModel === 'opus') L.push('orchestrator:', `  model: ${ORCH.model}`, '  after_each_run: [summary, spec, verifiers, next_prompt]');
+  else L.push('orchestrator:', `  model: ${ORCH.model}`, '  effort: low', '  when_spend_cap_is_zero: gpt-oss:20b   # local, free', '  after_each_run: [summary, spec, verifiers, next_prompt]');
+  if (F.checkKinds === 'full') L.push('  verifiers: [pattern, f2p, rubric]');
   return L.join('\n');
 }
 function promptMd(text, v) { return `# Prompt v${v}\n\n${text}`; }
@@ -1083,6 +1576,7 @@ function addCommit(c) {
   $('#repoCount').textContent = String(st.commits.length);
   paintTT();
   if (artsWin && artsWin.state === 'open' && c.files && c.files.some((f) => /artifacts\//.test(f.name))) renderArts();
+  renderTimeline(); report();
   return c;
 }
 function addPending(title, kind = 'pending') {
@@ -1227,6 +1721,9 @@ function applyPreview() {
   layout(); syncMirror(); renderWorking(); renderCommits(); paintTT(); paintSendLabel(); paintSuggest(); paintHint(); refreshRepoViews();
   fileWins.forEach(renderFileWin); if (artsWin && artsWin.state === 'open') renderArts();
   if (c && c.li && !$('#viewChanges').hidden) c.li.scrollIntoView({ block: 'nearest' });
+  // Owner request (prompt 0016): in playback every pane shows its latest visible reply.
+  if (F.ttScroll === 'bottom') requestAnimationFrame(() => viewTabs().forEach((t) => { t.r.thread.scrollTop = t.r.thread.scrollHeight; }));
+  renderTimeline(); report();
 }
 $('#ttBack').addEventListener('click', () => { stopPlay(); setTT(null); });
 $('#ttRestore').addEventListener('click', () => { const c = previewCommit(); if (c) restore(c, false); });
@@ -1560,6 +2057,10 @@ $('#exportBtn').addEventListener('click', () => { setWinState(repoWin, 'open'); 
 
 /* ---------- orchestrator ---------- */
 function criteriaFor(prompt) {
+  const base = STORY.criteria ? STORY.criteria(prompt) : baseCriteria(prompt);
+  return F.checkKinds === 'full' && STORY.extraCriteria ? base.concat(STORY.extraCriteria(prompt)) : base;
+}
+function baseCriteria(prompt) {
   const C = [];
   if (/pass@k|pass\^k/i.test(prompt)) {
     C.push({ id: 'C1', text: 'Defines pass@k as at least one of k attempts passing', test: (md) => /at least one|any of|\bany\b/i.test(md) });
@@ -1582,25 +2083,28 @@ function specFor(run, C) {
   return [
     '# Spec (maintained by the orchestrator)', '',
     `Goal: ${first.replace(/\.$/, '')}, clearly and checkably.`,
+    ...(STORY.source ? [`Source: ${STORY.source}`] : []),
     `Current prompt: v${run.version} (run ${run.no})`, '',
     '## Acceptance criteria (each has a verifier)',
     ...C.map((c) => `- ${c.id} ${c.text}`), '',
     '## Open questions',
-    '- Should every model use the same p and k in examples so numbers can be compared directly?',
+    STORY.openQ,
   ].join('\n');
 }
 function runNotes(run) {
+  const sn = STORY.notes && STORY.notes(run); if (sn) return sn;
   if (run.prompt === V1) return ['- All three define both metrics; only Claude names the capability-versus-reliability contrast.', '- None gives numbers, so answers cannot be checked yet. Next: ask for a one-line numeric example.'];
   if (run.prompt === V2) return ['- Numbers check out: Claude 99.2% vs 51.2% (p 0.8, k 3), OpenAI 0.99 vs 0.08 (p 0.6, k 5), Gemini 0.99 vs 0.81 (p 0.9, k 2).', '- Each picked a different p and k, which makes side-by-side comparison harder.'];
-  if (run.prompt === V4) return ['- All four drew both curves with a p slider and stayed under 2 KB.', '- qwen3 skipped the definitions (no "at least one" or "all") and used three sentences, so it fails three checks.'];
+  if (run.prompt === V4) return ['- All four drew both curves with a p slider and stayed under 2 KB.', '- qwen3 skipped the definitions (no "at least one" or "all") and used three sentences, so it fails three checks.', '- The F2P probe ran each chart\'s formula: qwen3 computes 1 − (1 − p)·k instead of 1 − (1 − p)^k, so its pass@k curve falls as k grows. The pattern check C5 missed this.'];
   if (run.prompt === V3) return ['- Four calculators: Claude sliders, OpenAI a k = 1..10 table, Gemini a bar chart, qwen3 a minimal form.', '- All compute 1 − (1 − p)^k and p^k; qwen3 used three sentences instead of two.'];
   const done = run.tabs.filter(({ r }) => r.final === 'done');
   const fastest = done.slice().sort((a, b) => (a.r.t1 - a.r.t0) - (b.r.t1 - b.r.t0))[0];
   return [`- ${done.length} of ${run.tabs.length} tabs replied${fastest ? `; fastest was ${tabLabel(fastest.t)}` : ''}.`, `- ${done.filter(({ r }) => r.resp.art).length} returned an artifact.`];
 }
 function orchestrate(run) {
-  if (F.orchestrator !== 'on' || !run.tabs.length || run.orchestrated) return;
-  run.orchestrated = true;
+  if (run.orchestrated) return;
+  if (F.orchestrator !== 'on' || !run.tabs.length) { run.done = true; renderTimeline(); report(); return; }
+  run.orchestrated = true; run.orch = orchPick();
   const steps = [
     ['Orchestrator is summarizing the run and updating the spec…', orchSummary],
     ['Orchestrator is writing and running verifiers…', orchVerify],
@@ -1608,7 +2112,7 @@ function orchestrate(run) {
   ];
   let i = 0;
   const next = () => {
-    if (i >= steps.length) { refreshRepoViews(); return; }
+    if (i >= steps.length) { run.done = true; refreshRepoViews(); renderTimeline(); report(); return; }
     const [label, fn] = steps[i++];
     if (run.instant) { fn(run); next(); return; }
     const pend = addPending(label, 'orch');
@@ -1616,55 +2120,60 @@ function orchestrate(run) {
   };
   next();
 }
-function orchCharge(run, tin, tout) { const c = (tin * ORCH.in + tout * ORCH.out) / 1e6; run.orchCost = (run.orchCost || 0) + c; st.spend += c; paintBudget(); return c; }
+function orchCharge(run, tin, tout) { const m = run.orch || orchPick(); const c = (tin * m.in + tout * m.out * m.mult) / 1e6; run.orchCost = (run.orchCost || 0) + c; st.spend += c; paintBudget(); return c; }
+function orchBy(run) { return `${ORCH.name} · ${(run.orch || orchPick()).label}`; }
 function orchSummary(run) {
   const n = pad(run.no), C = criteriaFor(run.prompt);
   const L = [`# Run ${run.no} summary`, '', `Prompt v${run.version}: ${run.prompt}`, '', '| Tab | Status | Tokens | Time | Cost | Artifact |', '|---|---|---|---|---|---|'];
   run.tabs.forEach(({ t, r }) => L.push(`| ${pad(t.id)} ${tabLabel(t)} | ${r.final} | ${Math.round(r.tokOut + r.tokThink)} | ${r.t1 ? ((r.t1 - r.t0) / 1000).toFixed(1) + 's' : '–'} | ${isFree(t) ? '$0' : usd(r.cost)} | ${r.resp.art ? 'yes' : 'no'} |`));
-  L.push('', '## What differed', ...runNotes(run));
+  L.push('', '## What differed', ...runNotes(run), '', `Orchestrator model: ${(run.orch || orchPick()).label}`);
   const summary = L.join('\n'), spec = specFor(run, C), before = st.files.has('spec.md') ? st.files.get('spec.md').content : null;
   putFile(`orchestrator/run-${n}-summary.md`, summary); putFile('spec.md', spec);
+  const extra = [];
+  const lb = STORY.leaderboard && STORY.leaderboard(run);
+  if (lb) { const lp = 'evals/leaderboard.md', lbBefore = st.files.has(lp) ? st.files.get(lp).content : null; putFile(lp, lb); extra.push({ name: lp, before: lbBefore, after: lb }); }
   const cost = orchCharge(run, 900, 380);
-  addCommit({ kind: 'orch', run: run.no, by: `${ORCH.name} · ${ORCH.model}`, title: `The orchestrator summarized run ${run.no} and updated spec.md (${C.length} acceptance criteria)`, short: `Orchestrator summarized run ${run.no} · spec.md updated`, metrics: usd(cost),
-    files: [{ name: `orchestrator/run-${n}-summary.md`, before: null, after: summary }, { name: 'spec.md', before, after: spec }] });
+  addCommit({ kind: 'orch', run: run.no, by: orchBy(run), title: `The orchestrator summarized run ${run.no} and updated spec.md (${C.length} acceptance criteria)`, short: `Orchestrator summarized run ${run.no} · spec.md updated`, metrics: usd(cost),
+    files: [{ name: `orchestrator/run-${n}-summary.md`, before: null, after: summary }, { name: 'spec.md', before, after: spec }, ...extra] });
 }
 function orchVerify(run) {
   const n = pad(run.no), C = criteriaFor(run.prompt), results = {};
   let pass = 0, total = 0;
   run.tabs.filter(({ r }) => r.final === 'done').forEach(({ t, r }) => {
-    const res = C.map((c) => ({ id: c.id, ok: !!c.test(r.resp.md, r.resp.art) }));
-    results[`${pad(t.id)} ${tabLabel(t)}`] = Object.fromEntries(res.map((x) => [x.id, x.ok ? 'pass' : 'fail']));
+    const res = C.map((c) => { const v = c.test(r.resp.md, r.resp.art, r.resp, t, run.prompt); return typeof v === 'object' && v ? { id: c.id, kind: c.kind, ok: !!v.ok, detail: v.detail, score: v.score } : { id: c.id, kind: c.kind, ok: !!v }; });
+    results[`${pad(t.id)} ${tabLabel(t)}`] = Object.fromEntries(res.map((x) => [x.id, x.detail ? `${x.ok ? 'pass' : 'fail'} · ${x.detail}` : x.ok ? 'pass' : 'fail']));
     const p = res.filter((x) => x.ok).length; pass += p; total += res.length;
     const chip = el('div', 'checks' + (p < res.length ? ' warn' : ''), `Orchestrator checks · ${p}/${res.length} passed`);
-    chip.title = res.map((x) => `${x.id} ${x.ok ? 'pass' : 'fail'} · ${C.find((c) => c.id === x.id).text}`).join('\n');
-    r.checkEl = chip; t.r.thread.appendChild(chip);
+    res.filter((x) => x.kind).forEach((x) => chip.appendChild(el('span', 'ck' + (x.ok ? '' : ' fail'), x.kind === 'f2p' ? `F2P ${x.ok ? '✓' : '✗'}` : `rubric ${x.score}/5`)));
+    chip.title = res.map((x) => `${x.id} ${x.ok ? 'pass' : 'fail'} · ${C.find((c) => c.id === x.id).text}${x.detail ? `\n    → ${x.detail}` : ''}`).join('\n');
+    r.checks = res; r.checkEl = chip; t.r.thread.appendChild(chip);
   });
   run.checks = { pass, total }; st.checks.pass += pass; st.checks.total += total;
-  const code = [`// verifiers/run-${n}.checks.js · written by the orchestrator for prompt v${run.version}`, ...C.map((c) => `export const ${c.id} = { text: ${JSON.stringify(c.text)}, test: ${c.test.toString()} };`)].join('\n');
-  const evals = JSON.stringify({ run: run.no, prompt_version: run.version, criteria: Object.fromEntries(C.map((c) => [c.id, c.text])), results, passed: pass, total }, null, 2);
+  const self = C.some((c) => c.kind === 'f2p') && F2P_SELFTEST[PROJ.story] ? [`// F2P self-test: the check must fail on the known-bad reference before it can be trusted. Result: ${F2P_SELFTEST[PROJ.story]() ? 'fails on the reference ✓' : 'PASSES on the reference ✗'}`] : [];
+  const code = [`// verifiers/run-${n}.checks.js · written by the orchestrator for prompt v${run.version}`, ...self, ...C.map((c) => `export const ${c.id} = { kind: ${JSON.stringify(c.kind || 'pattern')}, text: ${JSON.stringify(c.text)}, test: ${c.test.toString()} };`)].join('\n');
+  const evals = JSON.stringify({ run: run.no, prompt_version: run.version, graded_by: (run.orch || orchPick()).label, criteria: Object.fromEntries(C.map((c) => [c.id, `${c.kind ? c.kind + ': ' : ''}${c.text}`])), results, passed: pass, total }, null, 2);
   putFile(`verifiers/run-${n}.checks.js`, code); putFile(`evals/run-${n}.json`, evals);
   const cost = orchCharge(run, 1400, 520);
-  const c = addCommit({ kind: 'orch', run: run.no, by: `${ORCH.name} · ${ORCH.model}`, title: `The orchestrator wrote ${C.length} verifiers from the spec and ran them on ${Object.keys(results).length} replies: ${pass} of ${total} checks passed`, short: `Orchestrator ran ${total} checks · ${pass} passed`, metrics: usd(cost),
+  const c = addCommit({ kind: 'orch', run: run.no, by: orchBy(run), title: `The orchestrator wrote ${C.length} verifiers from the spec and ran them on ${Object.keys(results).length} replies: ${pass} of ${total} checks passed`, short: `Orchestrator ran ${total} checks · ${pass} passed`, metrics: usd(cost),
     files: [{ name: `verifiers/run-${n}.checks.js`, before: null, after: code }, { name: `evals/run-${n}.json`, before: null, after: evals }] });
+  run.checksSeq = c.n;
   run.tabs.forEach(({ r }) => { if (r.checkEl) r.checkEl.dataset.seq = String(c.n); });
   st.tabs.concat(st.closed).forEach(applyThread);
 }
 function orchSuggest(run) {
   const n = pad(run.no);
-  let text = SUGGEST[run.prompt], why = 'Builds on what this run showed.';
+  let text = STORY.suggest[run.prompt], why = STORY.why[run.prompt] || 'Builds on what this run showed.';
   if (!text) {
     const failing = run.checks && run.checks.pass < run.checks.total;
     text = failing ? `${run.prompt} Keep each answer to the point and check it against the stated format before replying.` : `${run.prompt} Then state one assumption your answer relies on.`;
     why = failing ? 'Some checks failed; tighten the format.' : 'All checks passed; probe the assumptions next.';
-  } else if (run.prompt === V1) why = 'No answer gave numbers, so nothing could be verified. Ask for two sentences and a one-line example.';
-  else if (run.prompt === V2) why = 'Numbers are right but use different p and k. A calculator lets a reader try any p and k.';
-  else if (run.prompt === V3) why = 'All four calculators work; a chart over k = 1..50 shows how fast the two metrics separate.';
+  }
   const md = `# Suggested next prompt (after run ${run.no})\n\n${text}\n\nWhy: ${why}`;
   putFile(`orchestrator/next-prompt-${n}.md`, md);
   const cost = orchCharge(run, 700, 120);
-  addCommit({ kind: 'orch', run: run.no, by: `${ORCH.name} · ${ORCH.model}`, title: `The orchestrator suggested the next prompt: “${text}”`, short: 'Orchestrator suggested the next prompt', metrics: usd(cost),
+  addCommit({ kind: 'orch', run: run.no, by: orchBy(run), title: `The orchestrator suggested the next prompt: “${text}”`, short: 'Orchestrator suggested the next prompt', metrics: usd(cost),
     files: [{ name: `orchestrator/next-prompt-${n}.md`, before: null, after: md }] });
-  st.suggestion = text; st.suggestHidden = false; paintSuggest(); paintHint();
+  run.suggested = text; st.suggestion = text; st.suggestHidden = false; paintSuggest(); paintHint(); renderTimeline(); report();
 }
 
 /* ---------- tabs and panes ---------- */
@@ -1743,7 +2252,8 @@ function buildControls(t) {
   t.r.ptop.innerHTML = ''; t.r.opts.innerHTML = '';
   if (t.p.picker === 'top') t.r.ptop.appendChild(sel);
   t.r.ptitle = el('span', 'title'); t.r.ptop.appendChild(t.r.ptitle);
-  if (t.runs.length) t.r.ptitle.textContent = t.runs[t.runs.length - 1].prompt;
+  const seenRuns = c ? t.runs.filter((r) => r.userSeq <= c.n) : t.runs;
+  if (seenRuns.length) t.r.ptitle.textContent = seenRuns[seenRuns.length - 1].prompt;
   if (t.p.picker === 'composer') t.r.opts.appendChild(sel);
   const r = model.reason;
   if (r && r.fixed) t.r.opts.appendChild(el('span', 'fixed', `Reasoning: ${r.fixed}`));
@@ -1926,9 +2436,10 @@ function paintSuggest() {
   const show = F.promptSuggest === 'on' && st.suggestion && !st.suggestHidden && !st.tt && promptEl.value.trim() !== st.suggestion;
   $('#suggest').hidden = !show;
   if (show) { $('#suggestText').textContent = st.suggestion; $('#suggestText').title = st.suggestion; }
+  report();
 }
-$('#suggestUse').addEventListener('click', () => { promptEl.value = st.suggestion; st.hIdx = historyList().indexOf(st.suggestion); syncMirror(); renderWorking(); paintSuggest(); paintHint(); promptEl.focus(); });
-$('#suggestHide').addEventListener('click', () => { st.suggestHidden = true; paintSuggest(); });
+$('#suggestUse').addEventListener('click', () => { promptEl.value = st.suggestion; st.hIdx = historyList().indexOf(st.suggestion); syncMirror(); renderWorking(); paintSuggest(); paintHint(); renderTimeline(); promptEl.focus(); });
+$('#suggestHide').addEventListener('click', () => { st.suggestHidden = true; paintSuggest(); renderTimeline(); });
 function syncMirror() {
   const c = previewCommit();
   const v = c ? c.state.prompt : promptEl.value;
@@ -1972,21 +2483,22 @@ function send(text, instant = false) {
   }
   if (st.history[st.history.length - 1] !== text) st.history.push(text);
   st.hIdx = st.history.length - 1;
-  if (text === st.suggestion) st.suggestion = null;
-  const run = { no: st.runNo, dir: runDir, prompt: text, version: st.head.version, ts, tabs: [], userSeq: userC.n, instant, expect: runnable.length };
+  const fromSuggestion = !!st.suggestion && text === st.suggestion;
+  if (fromSuggestion) st.suggestion = null;
+  const run = { no: st.runNo, dir: runDir, prompt: text, version: st.head.version, ts, tabs: [], userSeq: userC.n, instant, expect: runnable.length, fromSuggestion };
   st.exp.runs.push(run);
   promptEl.value = F.promptPrefill === 'on' ? text : '';
   syncMirror(); paintSuggest(); paintHint();
   st.running += runnable.length; stopBtn.hidden = false; paintSendLabel();
   st.tabs.forEach((t, i) => (runnable.includes(t) ? startRun(t, run, i + 1, instant) : skipRun(t, run)));
-  renderWorking(); refreshRepoViews(); renderCommits();
+  renderWorking(); refreshRepoViews(); renderCommits(); renderTimeline(); report();
 }
 function ledger(obj, ts = stamp()) {
   st.ledger.push(JSON.stringify({ unix: ts.unix, iso: ts.iso, human: ts.human, ...obj }));
   putFile('ledger.jsonl', st.ledger.join('\n'));
 }
 function makeReply(t, text) {
-  const s = SAMPLE[text] && SAMPLE[text][t.pid];
+  const s = STORY.reply(text, t);
   if (s) return { ...s };
   const h = hash(text + t.model.id + t.runs.length);
   const q = text.length > 90 ? text.slice(0, 87) + '…' : text;
@@ -2161,6 +2673,7 @@ function endOne(run) {
   if (run) run.expect--;
   if (!st.running) { stopBtn.hidden = true; paintSendLabel(); refreshRepoViews(); renderWorking(); }
   if (run && run.expect <= 0) orchestrate(run);
+  report();
 }
 function trip() { st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run' && !isFree(t)) stopRun(t, 'cap'); }); }
 function paintBudget() {
@@ -2197,6 +2710,102 @@ function renderTrace(t) {
   t.r.traceList.scrollTop = t.r.traceList.scrollHeight;
 }
 
+/* ---------- timeline ribbon: one card per step you sent ---------- */
+let tlHidden = false;
+function runEndSeq(run) { let n = 0; st.commits.forEach((c) => { if (c.run === run.no && c.n > n) n = c.n; }); return n; }
+function renderTimeline() {
+  const box = $('#timeline'), ol = $('#tlSteps');
+  box.hidden = F.timeline !== 'on';
+  if (box.hidden) return;
+  box.classList.toggle('collapsed', tlHidden);
+  $('#tlToggle').textContent = tlHidden ? 'Show' : 'Hide'; $('#tlToggle').setAttribute('aria-expanded', String(!tlHidden));
+  const runs = st.exp ? st.exp.runs : [], S = st.tt || Infinity;
+  const guided = runs.filter((r) => r.fromSuggestion).length;
+  $('#tlSub').textContent = runs.length ? `${runs.length} step${runs.length === 1 ? '' : 's'} from you${guided ? `, ${guided} of them the orchestrator's suggestion` : ''} · click a step to play it back` : 'Every prompt you send becomes a step here';
+  if (tlHidden) return;
+  ol.innerHTML = '';
+  const seen = runs.filter((r) => r.userSeq <= S), cur = st.tt ? seen[seen.length - 1] : null;
+  runs.forEach((run, i) => {
+    if (i) { const a = el('li', 'tl-arrow'); a.setAttribute('aria-hidden', 'true'); a.innerHTML = run.fromSuggestion ? '<i>→</i>◆ used the suggestion' : '<i>→</i>you changed the prompt'; ol.appendChild(a); }
+    const end = runEndSeq(run), future = run.userSeq > S;
+    const running = !future && (st.tt ? end > S : !run.done);
+    const li = el('li', 'tl-item');
+    const b = el('button', 'tl-card' + (future ? ' future' : '') + (running ? ' running' : '')); b.type = 'button'; b.dataset.dbg = `timeline-step:${i + 1}`;
+    if (cur === run) b.setAttribute('aria-current', 'step');
+    b.title = `${run.prompt}\n\nClick to play back the end of step ${i + 1}.`;
+    const top = el('div', 'tl-top');
+    top.append(el('span', 'n', `Step ${i + 1}`), el('span', 'tl-src' + (run.fromSuggestion ? ' orch' : ''), run.fromSuggestion ? '◆ orchestrator suggestion' : i ? 'you edited the prompt' : 'you wrote it'));
+    if (running) top.appendChild(el('span', 'tl-src', st.tt ? 'in progress here' : 'running…'));
+    const th = el('div', 'tl-thumbs');
+    let done = 0;
+    run.tabs.forEach(({ t, r }) => {
+      if (future || r.final !== 'done' || (st.tt && !(r.replySeq && r.replySeq <= S))) return;
+      done++;
+      if (STORY.thumb) { if (r.thumbUrl === undefined) { const c = STORY.thumb(run, t, r); r.thumbUrl = c ? c.toDataURL() : null; r.thumbTitle = c ? c.title : ''; } if (r.thumbUrl) { const im = el('img'); im.src = r.thumbUrl; im.alt = r.thumbTitle; im.title = r.thumbTitle; th.appendChild(im); return; } }
+      const ch = el('span', 'chipa', `${t.p.fav} ${r.resp.art ? '▣' : '✓'}`); ch.title = `${tabLabel(t)} replied${r.resp.art ? ' with an artifact' : ''}`; th.appendChild(ch);
+    });
+    if (!th.children.length) th.appendChild(el('span', 'chipa', future ? 'not yet' : 'waiting for replies'));
+    const bits = future ? ['after the step you are viewing'] : [`${done}/${run.tabs.length} replied`];
+    if (run.checks && (!st.tt || (run.checksSeq && run.checksSeq <= S))) bits.push(`checks ${run.checks.pass}/${run.checks.total}`);
+    if (!future) bits.push(usd(run.tabs.reduce((a, { r }) => a + r.cost, 0) + (run.orchCost || 0)));
+    b.append(top, el('div', 'tl-prompt', run.prompt), th, el('div', 'tl-meta', bits.join(' · ')));
+    b.addEventListener('click', () => { stopPlay(); setTT(end && end < st.cseq ? end : null); });
+    li.appendChild(b); ol.appendChild(li);
+  });
+  if (!st.tt && st.suggestion && F.promptSuggest === 'on' && runs.length) {
+    const a = el('li', 'tl-arrow'); a.setAttribute('aria-hidden', 'true'); a.innerHTML = '<i>→</i>next'; ol.appendChild(a);
+    const li = el('li', 'tl-item'), c = el('div', 'tl-card next'); c.dataset.dbg = 'timeline-next';
+    const top = el('div', 'tl-top'); top.append(el('span', 'n', `Step ${runs.length + 1}?`), el('span', 'tl-src orch', '◆ suggested'));
+    const row = el('div', 'tl-next-row');
+    const inBar = promptEl.value.trim() === st.suggestion;
+    const use = el('button', 'btn sm', inBar ? 'In the prompt bar' : 'Use'); use.type = 'button'; use.disabled = inBar; use.addEventListener('click', () => $('#suggestUse').click());
+    const go = el('button', 'btn sm primary', 'Use and send'); go.type = 'button'; go.disabled = st.running > 0;
+    go.addEventListener('click', () => { promptEl.value = st.suggestion; send(); });
+    row.append(use, go);
+    c.append(top, el('div', 'tl-prompt', st.suggestion), row);
+    li.appendChild(c); ol.appendChild(li);
+  }
+  const curCard = $('.tl-card[aria-current="step"]', ol) || (st.tt ? null : ol.lastElementChild);
+  if (curCard) ol.scrollLeft = Math.max(0, curCard.offsetLeft + curCard.offsetWidth - ol.clientWidth + 12);
+}
+$('#tlToggle').addEventListener('click', () => { tlHidden = !tlHidden; renderTimeline(); });
+
+/* ---------- link to the workspace shell (canvas, menu bar) ---------- */
+let lastReport = '';
+function report() {
+  if (!IN_SHELL) return;
+  const status = st.running ? 'running' : st.suggestion && F.promptSuggest === 'on' && !st.suggestHidden ? 'needs' : 'idle';
+  const msg = { mai: 'status', id: PROJ.id, title: STORY.title, status, run: st.runNo, steps: st.cseq, spend: +st.spend.toFixed(4), suggestion: st.suggestion || '', tt: st.tt || 0, checks: st.checks.total ? `${st.checks.pass}/${st.checks.total}` : '' };
+  const key = JSON.stringify(msg); if (key === lastReport) return; lastReport = key;
+  try { parent.postMessage(msg, '*'); } catch (e) {}
+}
+const CMDS = {
+  send: () => send(), stop: () => stopBtn.click(), useSuggestion: () => { if (st.suggestion) $('#suggestUse').click(); else toast('No suggestion yet.'); },
+  dismissSuggestion: () => $('#suggestHide').click(), reset: () => resetWorking(), focusPrompt: () => promptEl.focus(),
+  commitOnly: () => { if (!changesSince().length) { toast('Nothing unsent to commit.'); return; } commitWorking(workingPrompt(), stamp(), false); syncMirror(); renderWorking(); refreshRepoViews(); },
+  copyPrompt: () => navigator.clipboard.writeText(promptEl.value).then(() => toast('Prompt copied'), () => toast('Copy was blocked here.')),
+  ttPrev: () => { stopPlay(); stepTT(-1); }, ttNext: () => { stopPlay(); stepTT(1); }, ttPlay: () => $('#ttPlay').click(), ttBack: () => { stopPlay(); setTT(null); },
+  restore: () => { const c = previewCommit(); if (c) restore(c, false); else toast('Step back in time first, then restore.'); },
+  branch: () => restore(previewCommit() || st.commits[0], true),
+  repo: () => $('#repoBtn').click(), dock: () => setRepoMode(F.repoMode === 'dock' ? 'float' : 'dock'), arts: () => { if (F.artifactsWindow === 'on') $('#artsBtn').click(); },
+  export: () => $('#exportBtn').click(), flags: () => openFlags(), split: () => setView('split'), one: () => setView('one'),
+  newTab: () => $('#newTab').click(), mcp: () => $('#mcpBtn').click(),
+};
+window.addEventListener('message', (e) => {
+  const d = e.data; if (!d || !d.mai) return;
+  if (d.mai === 'cmd' && CMDS[d.name]) CMDS[d.name](d.arg);
+  if (d.mai === 'flag' && FLAG_DEFS.some((x) => x.key === d.k && d.v in x.opts) && F[d.k] !== d.v) { F[d.k] = d.v; if (d.k === 'repoMode') paintDocked(); applyFlags(); }
+  if (d.mai === 'chrome') { app.classList.toggle('embedded', !!d.embedded); if (F.repoMode === 'dock') placeDocked(); }
+});
+if (IN_SHELL) {
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && ['=', '+', '-', '0'].includes(e.key)) { e.preventDefault(); parent.postMessage({ mai: 'key', key: e.key, id: PROJ.id }, '*'); }
+  }, true);
+  window.addEventListener('wheel', (e) => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); parent.postMessage({ mai: 'wheel', id: PROJ.id, x: e.clientX, y: e.clientY, dy: e.deltaY }, '*'); }, { passive: false });
+  window.addEventListener('pointerdown', () => parent.postMessage({ mai: 'focus', id: PROJ.id }, '*'), true);
+}
+app.classList.toggle('embedded', !!PROJ.embedded);
+
 /* ---------- flags window + element names ---------- */
 let flagsWin = null;
 function renderFlags() {
@@ -2205,7 +2814,8 @@ function renderFlags() {
   const wrap = el('div', 'flags');
   wrap.appendChild(el('p', null, 'Every change from the latest round is a flag you can switch back here. Your choices stay in this browser. To make one the default for everyone, tell Claude the flag and value, for example "set changesView to detailed".'));
   wrap.appendChild(el('h4', null, 'Flags'));
-  FLAG_DEFS.forEach((d) => {
+  FLAG_DEFS.forEach((d, i) => {
+    if (d.v6 && !(FLAG_DEFS[i - 1] || {}).v6) { wrap.appendChild(el('h4', null, 'New in v6 (prompt 0016)')); if (!IN_SHELL) wrap.appendChild(el('p', null, 'Workspace and Menu bar apply to the canvas around projects, so they only change something when this project is open in the workspace.')); }
     const row = el('div', 'flag' + (F[d.key] !== d.def ? ' changed' : ''));
     const name = el('span'); name.append(el('b', null, d.label + ' '), el('code', null, d.key));
     const sel = el('select'); sel.id = `flag-${d.key}`; sel.setAttribute('aria-label', d.label);
@@ -2240,6 +2850,7 @@ function openFlags() {
 $('#flagsBtn').addEventListener('click', () => { if (flagsWin && flagsWin.state === 'open') setWinState(flagsWin, 'closed'); else openFlags(); });
 function setFlag(k, v) {
   const d = FLAG_DEFS.find((x) => x.key === k); if (!d || !(v in d.opts)) return false;
+  if (IN_SHELL) try { parent.postMessage({ mai: 'flag', k, v, id: PROJ.id }, '*'); } catch (e) {}
   if (k === 'repoMode') { setRepoMode(v); return true; }
   F[k] = v; saveFlags(); applyFlags(); return true;
 }
@@ -2248,31 +2859,382 @@ function applyFlags() {
   app.classList.toggle('dbg', F.debugIds === 'on');
   $('#artsBtn').hidden = F.artifactsWindow !== 'on';
   if (F.artifactsWindow !== 'on' && artsWin && artsWin.state === 'open') setWinState(artsWin, 'closed');
-  paintDocked(); renderCommits(); renderWorking(); paintSuggest(); paintHint(); renderFlags();
+  paintDocked(); renderCommits(); renderWorking(); paintSuggest(); paintHint(); renderFlags(); renderTimeline();
 }
-window.mai = { flags: F, setFlag, elements: ELEMENTS, versions: HISTORY };
+window.mai = { flags: F, setFlag, elements: ELEMENTS, versions: HISTORY, story: PROJ.story, cmd: (n, a) => CMDS[n] && CMDS[n](a), state: () => ({ runs: st.exp ? st.exp.runs.length : 0, steps: st.cseq, checks: st.checks, suggestion: st.suggestion, tt: st.tt }) };
 
 function tick() { $('#clock').textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 tick(); setInterval(tick, 20000);
 
 /* ---------- opening state: three runs, each followed by orchestrator steps ---------- */
-addTab('anthropic', 'claude-opus-5-5', 'medium');
-addTab('openai', 'gpt-5', 'medium');
-addTab('gemini', 'gemini-2.5-pro', 'dynamic');
-const y0 = toYaml(snapshot());
-st.head = { prompt: '', version: 0, yaml: y0, snap: snapshot() };
-putFile('harness.yaml', y0); putFile('README.md', README('pass-k-vs-pass-hat-k'));
-addCommit({ kind: 'init', title: 'You started the experiment with 3 tabs', short: 'Experiment started · 3 tabs', files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }] });
-send(V1, true);
-st.tabs[0].reason = 'high'; buildControls(st.tabs[0]);
-st.mcp.add('filesystem'); st.tabs.forEach((t) => buildControls(t)); $('#mcpCount').textContent = '1';
-send(V2, true);
-addTab('open', 'qwen3:8b');
-send(V3, true);
+function initRepo(slug) {
+  const y0 = toYaml(snapshot());
+  st.head = { prompt: '', version: 0, yaml: y0, snap: snapshot() };
+  putFile('harness.yaml', y0); putFile('README.md', README(slug));
+  addCommit({ kind: 'init', title: `You started the experiment with ${st.tabs.length} tabs`, short: `Experiment started · ${st.tabs.length} tabs`, files: [{ name: 'harness.yaml', before: null, after: y0 }, { name: 'README.md', note: 'new file' }] });
+}
+STORY.open();
 st.active = st.tabs[0].id;
+requestAnimationFrame(() => st.tabs.forEach((t) => { t.r.thread.scrollTop = t.r.thread.scrollHeight; }));
 st.openFile = artifacts()[0] || null;
 paintBudget(); syncMirror(); renderWorking(); layout(); paintTT(); paintHint(); paintSuggest();
-setWinState(repoWin, window.innerWidth < 1000 ? 'closed' : 'open');
-setRview('changes'); applyFlags(); refreshRepoViews();
+// B-25: in narrow projects the toolbar wraps, so start the floating repo window below the tab strip, not over the buttons.
+(() => { const A = app.getBoundingClientRect(), top = Math.round($('.tabbar').getBoundingClientRect().bottom - A.top + 8), s = repoWin.el.style;
+  if (top > parseInt(s.top, 10)) { s.top = top + 'px'; s.height = Math.max(240, Math.min(parseInt(s.height, 10), A.height - top - 30)) + 'px'; } })();
+setWinState(repoWin, window.innerWidth < 1000 || PROJ.repo === 'closed' ? 'closed' : 'open');
+setRview('changes'); applyFlags(); refreshRepoViews(); renderTimeline(); report();
+})();
+</script>
+</template>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const ws = $('#ws'), canvas = $('#canvas'), world = $('#world');
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+
+/* ---------- flags shared with every project (same localStorage key the projects use) ---------- */
+const DEF = { workspace: 'canvas', menuBar: 'menus', timeline: 'on', ttScroll: 'bottom', debugIds: 'off', repoMode: 'float', artifactsWindow: 'on' };
+const F = Object.assign({}, DEF);
+try { Object.assign(F, JSON.parse(localStorage.getItem('mai-flags') || '{}')); } catch (e) {}
+function saveFlag(k, v) { F[k] = v; try { const all = JSON.parse(localStorage.getItem('mai-flags') || '{}'); all[k] = v; localStorage.setItem('mai-flags', JSON.stringify(all)); } catch (e) {} }
+
+/* ---------- projects ---------- */
+const P = [];
+let cur = null, nextId = 1;
+const SEED = [
+  { id: 'landwater', story: 'landwater', title: 'Land or Water?', x: 0, y: 0, w: 1440, h: 900 },
+  { id: 'passk', story: 'passk', title: 'pass@k vs pass^k', x: 1500, y: 0, w: 1180, h: 760, repo: 'closed' },
+  { id: 'replay', story: 'landwater', start: 'step1', title: 'Land or Water? · guided from step 1', x: 1500, y: 820, w: 1180, h: 760, repo: 'closed' },
+];
+function embedded() { return !(F.workspace === 'single' && F.menuBar === 'plain'); }
+function srcdoc(cfg) {
+  const json = JSON.stringify(cfg).replace(/</g, '\\u003c');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<script>window.MAI_PROJECT=${json};<\/script></head><body>${$('#projectTemplate').innerHTML}</body></html>`;
+}
+function addProject(o, quiet) {
+  const p = Object.assign({ id: `p${nextId++}`, story: 'blank', title: 'Untitled experiment', w: 1180, h: 760, state: 'open', s: { status: 'idle' } }, o);
+  if (p.x == null) { const b = bounds(); p.x = b ? b.x + b.w + 60 : 0; p.y = b ? b.y : 0; }
+  const w = el('section', 'pw'); w.dataset.dbg = `project-window:${p.id}`; w.setAttribute('aria-label', p.title);
+  w.innerHTML = `<header class="pw-bar" data-dbg="project-titlebar"><div class="lights"><button class="light close" type="button" data-glyph="×"></button><button class="light min" type="button" data-glyph="–"></button><button class="light max" type="button" data-glyph="+"></button></div><span class="pw-title"></span><span class="pill" data-dbg="project-status" data-s="idle">starting</span><span class="pw-meta"></span><button class="pw-focus" type="button">Focus</button></header><div class="pw-body"><iframe></iframe><div class="pw-shield" title="Click to zoom to this project"></div></div><div class="pw-resize" title="Drag to resize"></div>`;
+  p.el = w; p.bar = $('.pw-bar', w); p.pill = $('.pill', w); p.meta = $('.pw-meta', w); p.frame = $('iframe', w);
+  $('.pw-title', w).textContent = p.title;
+  $('.light.close', w).setAttribute('aria-label', `Close ${p.title}`); $('.light.min', w).setAttribute('aria-label', `Collapse ${p.title}`); $('.light.max', w).setAttribute('aria-label', `Focus ${p.title}`);
+  p.frame.name = `proj-${p.id}`; p.frame.title = `Project: ${p.title}`;
+  p.frame.srcdoc = srcdoc({ id: p.id, story: p.story, start: p.start || 'full', embedded: embedded(), title: p.title, repo: p.repo || 'open' });
+  world.appendChild(w); P.push(p); place(p);
+  $('.light.close', w).addEventListener('click', () => closeProject(p));
+  $('.light.min', w).addEventListener('click', () => { w.classList.toggle('collapsed'); });
+  $('.light.max', w).addEventListener('click', () => focusProject(p, true));
+  $('.pw-focus', w).addEventListener('click', () => focusProject(p, true));
+  $('.pw-shield', w).addEventListener('click', () => focusProject(p, true));
+  w.addEventListener('pointerdown', () => setCurrent(p), true);
+  dragger(p.bar, (dx, dy) => { p.x += dx / view.z; p.y += dy / view.z; place(p); }, (e) => !e.target.closest('button'));
+  dragger($('.pw-resize', w), (dx, dy) => { p.w = Math.max(760, p.w + dx / view.z); p.h = Math.max(480, p.h + dy / view.z); place(p); });
+  p.bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) focusProject(p, true); });
+  if (!quiet) { setCurrent(p); focusProject(p, true); }
+  paintWindows();
+  return p;
+}
+function place(p) { Object.assign(p.el.style, { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px', height: p.h + 'px' }); }
+function setCurrent(p) {
+  if (cur === p) return;
+  cur = p; P.forEach((q) => q.el.classList.toggle('current', q === p));
+  if (F.workspace === 'single') paintSingle();
+}
+function closeProject(p) {
+  p.state = 'closed'; p.el.hidden = true;
+  if (cur === p) { cur = null; const o = P.find((q) => q.state === 'open'); if (o) setCurrent(o); }
+  paintWindows(); toast(`Closed ${p.title}. It keeps running; reopen it from the Window menu.`);
+}
+function reopen(p) { p.state = 'open'; p.el.hidden = false; setCurrent(p); focusProject(p, true); paintWindows(); }
+function cmd(name, arg, p = cur) { if (p) p.frame.contentWindow.postMessage({ mai: 'cmd', name, arg }, '*'); else toast('Open a project first.'); }
+function broadcast(msg, except) { P.forEach((p) => { if (p !== except) p.frame.contentWindow.postMessage(msg, '*'); }); }
+
+/* ---------- canvas: pan and zoom ---------- */
+const view = { x: 40, y: 40, z: 0.5 };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function applyView(anim) {
+  world.style.transition = anim ? 'transform .35s ease' : 'none';
+  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`;
+  const g = 24 * view.z;
+  canvas.style.backgroundSize = `${g}px ${g}px`; canvas.style.backgroundPosition = `${view.x}px ${view.y}px`;
+  $('#zPct').textContent = Math.round(view.z * 100) + '%';
+  ws.classList.toggle('far', view.z < 0.3);
+}
+function zoomAt(sx, sy, factor, anim) {
+  const z2 = clamp(view.z * factor, 0.1, 1.6), wx = (sx - view.x) / view.z, wy = (sy - view.y) / view.z;
+  view.x = sx - wx * z2; view.y = sy - wy * z2; view.z = z2; applyView(anim);
+}
+function zoomCenter(f) { zoomAt(canvas.clientWidth / 2, canvas.clientHeight / 2, f, true); }
+function bounds(list = P.filter((p) => p.state === 'open')) {
+  if (!list.length) return null;
+  const x0 = Math.min(...list.map((p) => p.x)), y0 = Math.min(...list.map((p) => p.y));
+  const x1 = Math.max(...list.map((p) => p.x + p.w)), y1 = Math.max(...list.map((p) => p.y + (p.el.offsetHeight || p.h)));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+function fit(r, anim, maxZ = 1) {
+  if (!r) return;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight, pad = cw < 720 ? 12 : 36;
+  view.z = clamp(Math.min((cw - 2 * pad) / r.w, (ch - 2 * pad - 30) / r.h), 0.1, maxZ);
+  view.x = (cw - r.w * view.z) / 2 - r.x * view.z; view.y = (ch - 30 - r.h * view.z) / 2 - r.y * view.z;
+  applyView(anim);
+}
+function fitAll(anim = true) { fit(bounds(), anim); }
+function focusProject(p, anim) {
+  if (!p) return;
+  if (p.state !== 'open') { reopen(p); return; }
+  p.el.classList.remove('collapsed'); setCurrent(p);
+  if (F.workspace === 'single') return;
+  fit({ x: p.x, y: p.y, w: p.w, h: p.h }, anim);
+}
+function dragger(handle, move, ok = () => true) {
+  let last = null;
+  handle.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !ok(e) || F.workspace === 'single') return; last = { x: e.clientX, y: e.clientY }; handle.setPointerCapture(e.pointerId); ws.classList.add('dragging'); e.preventDefault(); e.stopPropagation(); });
+  handle.addEventListener('pointermove', (e) => { if (!last) return; move(e.clientX - last.x, e.clientY - last.y); last = { x: e.clientX, y: e.clientY }; });
+  const end = () => { last = null; ws.classList.remove('dragging'); };
+  handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
+}
+(() => {
+  let pan = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (F.workspace === 'single' || e.button !== 0 || !(e.target === canvas || e.target === world)) return;
+    pan = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('panning'); ws.classList.add('dragging'); closeMenus();
+  });
+  canvas.addEventListener('pointermove', (e) => { if (!pan) return; view.x += e.clientX - pan.x; view.y += e.clientY - pan.y; pan = { x: e.clientX, y: e.clientY }; applyView(); });
+  const end = () => { pan = null; canvas.classList.remove('panning'); ws.classList.remove('dragging'); };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('wheel', (e) => {
+    if (F.workspace === 'single') return;
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0022));
+    else { view.x -= e.deltaX; view.y -= e.deltaY; applyView(); }
+  }, { passive: false });
+})();
+$('#zIn').addEventListener('click', () => zoomCenter(1.25));
+$('#zOut').addEventListener('click', () => zoomCenter(0.8));
+$('#zFit').addEventListener('click', () => fitAll());
+$('#zPct').addEventListener('click', () => { if (!cur) return; const cw = canvas.clientWidth; view.z = 1; view.x = (cw - cur.w) / 2 - cur.x; view.y = 16 - cur.y; applyView(true); });
+function key(k) { if (k === '=' || k === '+') zoomCenter(1.25); else if (k === '-') zoomCenter(0.8); else if (k === '0') fitAll(); else if (k === '1') focusProject(cur, true); }
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && ['=', '+', '-', '0', '1'].includes(e.key)) { e.preventDefault(); key(e.key); }
+  if (e.key === 'Escape') { closeMenus(); const s = $('.wsheet'); if (s) s.remove(); }
+});
+// B-26: scrollIntoView inside a project also scrolls ancestors; keep the canvas and shell pinned.
+[canvas, ws, document.scrollingElement].forEach((n) => n && n.addEventListener('scroll', () => { n.scrollLeft = 0; n.scrollTop = 0; }));
+
+/* ---------- messages from projects ---------- */
+window.addEventListener('message', (e) => {
+  const d = e.data, p = d && P.find((q) => q.frame.contentWindow === e.source);
+  if (!d || !d.mai || !p) return;
+  if (d.mai === 'status') {
+    const was = p.s.status; p.s = d;
+    const words = { running: `Running · run ${d.run}`, needs: 'Needs you · suggestion ready', idle: 'Up to date' };
+    p.pill.dataset.s = d.status; p.pill.textContent = words[d.status] || d.status;
+    p.pill.title = d.status === 'needs' ? `The orchestrator suggests: ${d.suggestion}` : '';
+    p.meta.textContent = [d.tt ? `viewing step ${d.tt} of ${d.steps}` : `${d.steps} steps`, `${d.run} run${d.run === 1 ? '' : 's'}`, d.checks && `checks ${d.checks}`, `$${d.spend.toFixed(3)}`].filter(Boolean).join(' · ');
+    if (was === 'running' && d.status === 'needs') toast(`${p.title} needs you: the orchestrator suggested the next step.`, 'Show', () => focusProject(p, true));
+    paintWindows();
+  }
+  if (d.mai === 'flag') { saveFlag(d.k, d.v); broadcast({ mai: 'flag', k: d.k, v: d.v }, p); applyShellFlags(); }
+  if (d.mai === 'key') { setCurrent(p); key(d.key); }
+  if (d.mai === 'focus') { setCurrent(p); closeMenus(); }
+  if (d.mai === 'wheel' && F.workspace !== 'single') {
+    const r = canvas.getBoundingClientRect(), b = p.frame.getBoundingClientRect();
+    zoomAt(b.left - r.left + d.x * view.z, b.top - r.top + d.y * view.z, Math.exp(-d.dy * 0.0022));
+  }
+});
+
+/* ---------- menu bar ---------- */
+function flagItem(label, k, on, off) { return { l: label, check: F[k] === on, run: () => setShellFlag(k, F[k] === on ? off : on) }; }
+function setShellFlag(k, v) { saveFlag(k, v); broadcast({ mai: 'flag', k, v }); applyShellFlags(); }
+const MENUS = [
+  ['file', 'File', () => [
+    { l: 'New blank project', run: () => addProject({ story: 'blank', title: `Untitled experiment ${nextId}` }) },
+    { l: 'New from example: Land or Water? (guided, from step 1)', run: () => addProject({ story: 'landwater', start: 'step1', title: 'Land or Water? · guided from step 1' }) },
+    { l: 'New from example: pass@k vs pass^k', run: () => addProject({ story: 'passk', title: 'pass@k vs pass^k' }) },
+    '-',
+    { l: 'Duplicate project', dis: !cur, run: () => addProject({ story: cur.story, start: cur.start, title: `${cur.title} (copy)` }) },
+    { l: 'Export project repo…', dis: !cur, run: () => cmd('export') },
+    '-',
+    { l: 'Close project', dis: !cur, run: () => closeProject(cur) },
+  ]],
+  ['edit', 'Edit', () => [
+    { l: 'Use suggested prompt', dis: !(cur && cur.s.suggestion), run: () => cmd('useSuggestion') },
+    { l: 'Dismiss suggestion', dis: !(cur && cur.s.suggestion), run: () => cmd('dismissSuggestion') },
+    '-',
+    { l: 'Reset unsent changes', run: () => cmd('reset') },
+    { l: 'Commit without running', run: () => cmd('commitOnly') },
+    '-',
+    { l: 'Copy prompt', run: () => cmd('copyPrompt') },
+    { l: 'Focus prompt bar', run: () => cmd('focusPrompt') },
+  ]],
+  ['view', 'View', () => [
+    { l: 'Zoom in', k: `${MOD} +`, run: () => zoomCenter(1.25) },
+    { l: 'Zoom out', k: `${MOD} −`, run: () => zoomCenter(0.8) },
+    { l: 'Zoom to fit all projects', k: `${MOD} 0`, run: () => fitAll() },
+    { l: 'Focus current project', k: `${MOD} 1`, dis: !cur, run: () => focusProject(cur, true) },
+    '-',
+    { l: 'Projects on a canvas', check: F.workspace === 'canvas', run: () => setShellFlag('workspace', 'canvas') },
+    { l: 'One project fills the screen (v5)', check: F.workspace === 'single', run: () => setShellFlag('workspace', 'single') },
+    '-',
+    flagItem('Timeline ribbon', 'timeline', 'on', 'off'),
+    flagItem('Panes scroll to latest in playback', 'ttScroll', 'bottom', 'keep'),
+    flagItem('Element names overlay', 'debugIds', 'on', 'off'),
+    '-',
+    { l: 'Repo window', run: () => cmd('repo') },
+    { l: 'Dock or float the repo window', run: () => cmd('dock') },
+    { l: 'Artifacts window', run: () => cmd('arts') },
+    { l: 'Tabs side by side', run: () => cmd('split') },
+    { l: 'One tab at a time', run: () => cmd('one') },
+  ]],
+  ['project', 'Project', () => [
+    { l: 'Send to every tab', k: `${MOD} ↵`, run: () => cmd('send') },
+    { l: 'Stop all', dis: !(cur && cur.s.status === 'running'), run: () => cmd('stop') },
+    { l: 'New variant tab…', run: () => cmd('newTab') },
+    { l: 'MCP & tools…', run: () => cmd('mcp') },
+    '-',
+    { l: 'Step back in time', run: () => cmd('ttPrev') },
+    { l: 'Step forward', run: () => cmd('ttNext') },
+    { l: 'Play back history', run: () => cmd('ttPlay') },
+    { l: 'Back to latest', run: () => cmd('ttBack') },
+    '-',
+    { l: 'Restore this state', run: () => cmd('restore') },
+    { l: 'Branch from here', run: () => cmd('branch') },
+  ]],
+  ['window', 'Window', () => {
+    const words = { running: 'running', needs: 'needs you', idle: 'up to date' };
+    const open = P.filter((p) => p.state === 'open'), closed = P.filter((p) => p.state === 'closed');
+    return [{ sec: 'Projects' }, ...open.map((p) => ({ l: p.title, sub: words[p.s.status] || '', check: p === cur, run: () => focusProject(p, true) })),
+      ...(closed.length ? ['-', { sec: 'Closed' }, ...closed.map((p) => ({ l: p.title, sub: 'reopen', run: () => reopen(p) }))] : []),
+      '-', { l: 'Arrange in a grid', run: arrange }, { l: 'Zoom to fit all projects', run: () => fitAll() }];
+  }],
+  ['help', 'Help', () => [
+    { l: 'Flags & element names…', run: () => cmd('flags') },
+    { l: 'Keyboard and mouse', run: showKeys },
+    { l: "What's new in v6", run: showNew },
+  ]],
+];
+let openMenu = null;
+function closeMenus() { if (openMenu) { openMenu.pop.remove(); openMenu.btn.setAttribute('aria-expanded', 'false'); openMenu = null; } }
+function showMenu(btn, def) {
+  closeMenus();
+  const pop = el('div', 'mpop'); pop.setAttribute('role', 'menu'); pop.dataset.dbg = `menu:${def[0]}`;
+  def[2]().forEach((it) => {
+    if (it === '-') { pop.appendChild(el('hr')); return; }
+    if (it.sec) { pop.appendChild(el('div', 'sec', it.sec)); return; }
+    const b = el('button'); b.type = 'button'; b.setAttribute('role', it.check != null ? 'menuitemcheckbox' : 'menuitem'); b.disabled = !!it.dis;
+    if (it.check != null) b.setAttribute('aria-checked', String(!!it.check));
+    b.append(el('span', 'ck', it.check ? '✓' : ''), el('span', 'lb', it.l));
+    if (it.sub) b.appendChild(el('span', 'sub', it.sub));
+    if (it.k) b.appendChild(el('kbd', null, it.k));
+    b.addEventListener('click', () => { closeMenus(); it.run(); });
+    pop.appendChild(b);
+  });
+  ws.appendChild(pop);
+  const r = btn.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + 'px'; pop.style.top = (r.bottom + 2) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+  openMenu = { btn, pop };
+  const first = pop.querySelector('button:not(:disabled)'); if (first) first.focus({ preventScroll: true });
+}
+MENUS.forEach((def) => {
+  const b = el('button', 'mtop', def[1]); b.type = 'button'; b.dataset.m = def[0]; b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false');
+  b.addEventListener('click', (e) => { e.stopPropagation(); if (openMenu && openMenu.btn === b) closeMenus(); else showMenu(b, def); });
+  b.addEventListener('pointerenter', () => { if (openMenu && openMenu.btn !== b) showMenu(b, def); });
+  $('#menus').appendChild(b);
+});
+document.addEventListener('click', (e) => { if (openMenu && !openMenu.pop.contains(e.target)) closeMenus(); });
+document.addEventListener('keydown', (e) => {
+  if (!openMenu || !['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault();
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const tops = [...document.querySelectorAll('.mtop')].filter((b) => b.offsetParent), i = tops.indexOf(openMenu.btn);
+    const nb = tops[(i + (e.key === 'ArrowRight' ? 1 : -1) + tops.length) % tops.length]; showMenu(nb, MENUS.find((m) => m[0] === nb.dataset.m)); return;
+  }
+  const items = [...openMenu.pop.querySelectorAll('button:not(:disabled)')], i = items.indexOf(document.activeElement);
+  items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+});
+
+/* ---------- windows, needs-you, totals ---------- */
+function paintWindows() {
+  const open = P.filter((p) => p.state === 'open'), needs = open.filter((p) => p.s.status === 'needs');
+  const nb = $('#needsBtn');
+  nb.textContent = needs.length ? `${needs.length} need${needs.length === 1 ? 's' : ''} you` : 'all up to date';
+  nb.classList.toggle('none', !needs.length);
+  nb.title = needs.length ? `Waiting for you: ${needs.map((p) => p.title).join(', ')}. Click to jump to the next one.` : 'No project is waiting for you';
+  const spend = P.reduce((a, p) => a + (p.s.spend || 0), 0), running = open.filter((p) => p.s.status === 'running').length;
+  $('#wsSpend').innerHTML = `${open.length} projects${running ? ` · <b>${running} running</b>` : ''} · spend <b>$${spend.toFixed(3)}</b>`;
+}
+$('#needsBtn').addEventListener('click', () => {
+  const needs = P.filter((p) => p.state === 'open' && p.s.status === 'needs'); if (!needs.length) return;
+  const i = needs.indexOf(cur); focusProject(needs[(i + 1) % needs.length], true);
+});
+function arrange() {
+  const open = P.filter((p) => p.state === 'open'), cols = Math.ceil(Math.sqrt(open.length));
+  let x = 0, y = 0, rowH = 0;
+  open.forEach((p, i) => { if (i && i % cols === 0) { x = 0; y += rowH + 60; rowH = 0; } p.x = x; p.y = y; place(p); x += p.w + 60; rowH = Math.max(rowH, p.h); });
+  fitAll();
+}
+function toast(msg, act, fn) {
+  const old = $('.wtoast'); if (old) old.remove();
+  const t = el('div', 'wtoast'); t.setAttribute('role', 'status'); t.appendChild(el('span', null, msg));
+  if (act) { const b = el('button', null, act); b.type = 'button'; b.addEventListener('click', () => { t.remove(); fn(); }); t.appendChild(b); }
+  ws.appendChild(t); setTimeout(() => t.remove(), 5200);
+}
+function sheet(title, html) {
+  const o = el('div', 'wsheet'), box = el('div'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+  box.innerHTML = `<h2>${title}</h2>${html}<div class="row"><button type="button">Close</button></div>`;
+  o.appendChild(box); ws.appendChild(o);
+  const close = () => o.remove(); $('button', box).addEventListener('click', close); o.addEventListener('click', (e) => { if (e.target === o) close(); });
+  $('button', box).focus();
+}
+function showKeys() {
+  sheet('Keyboard and mouse', `<table>
+<tr><td>drag empty canvas</td><td>Pan</td></tr><tr><td>scroll / two fingers</td><td>Pan (over empty canvas)</td></tr>
+<tr><td>${MOD} + scroll, pinch</td><td>Zoom at the pointer, also over a project</td></tr>
+<tr><td>${MOD} + / ${MOD} −</td><td>Zoom in / out</td></tr><tr><td>${MOD} 0</td><td>Fit every project</td></tr><tr><td>${MOD} 1</td><td>Focus the current project</td></tr>
+<tr><td>drag a title bar</td><td>Move a project; the corner resizes it</td></tr><tr><td>double-click a title bar</td><td>Focus that project</td></tr>
+<tr><td>${MOD} Enter</td><td>Send the prompt to every tab (inside a project)</td></tr><tr><td>↑ ↓ in the prompt bar</td><td>Earlier prompts, then the suggestion</td></tr>
+<tr><td>Esc</td><td>Close menus; leave playback</td></tr></table>`);
+}
+function showNew() {
+  sheet("What's new in v6", `<ul>
+<li><b>Project windows</b> on an infinite canvas: each holds the master prompt, variant tabs, artifacts and its own repo. Pan, zoom, move and resize them; the menu bar counts the projects that need you.</li>
+<li><b>File, Edit, View, Project, Window, Help</b> menus act on the current project (blue ring).</li>
+<li><b>Land or Water?</b>: Karpathy's eval recreated in three steps, the last two the orchestrator's suggestions. The maps are simulated answers scored against a real land mask (Natural Earth, 16,200 points, always-Water baseline 71.1%).</li>
+<li><b>Timeline ribbon</b> under the panes: one card per step, with thumbnails, checks and cost. Click a card to play that step back.</li>
+<li><b>F2P and rubric checks</b>: one fail-to-pass check that runs the artifact's numbers and must fail on a known-bad reference, and one rubric graded 1–5 by the orchestrator.</li>
+<li><b>Orchestrator</b> runs Opus 5.5 at low effort and switches to a free local model when the spend cap is $0 or reached.</li>
+<li>Playback scrolls every pane to its latest reply.</li></ul>
+<p>Every change is a flag (Help › Flags) with the v5 behaviour as the other option.</p>`);
+}
+
+/* ---------- workspace flags ---------- */
+function paintSingle() {
+  if (!cur) return;
+  P.forEach((p) => p.el.classList.toggle('current', p === cur));
+}
+function applyShellFlags() {
+  ws.classList.toggle('single', F.workspace === 'single');
+  ws.classList.toggle('plain', F.menuBar === 'plain');
+  ws.classList.toggle('dbg', F.debugIds === 'on');
+  broadcast({ mai: 'chrome', embedded: embedded() });
+  if (F.workspace !== 'single') applyView();
+}
+
+function tick() { $('#wsClock').textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+tick(); setInterval(tick, 20000);
+
+SEED.forEach((o) => addProject(o, true));
+setCurrent(P[0]);
+applyShellFlags();
+if (canvas.clientWidth < 720) focusProject(P[0]); else fitAll(false);
+window.maiShell = { projects: () => P.map((p) => ({ id: p.id, title: p.title, state: p.state, status: p.s.status })), view, fitAll, focus: (id) => focusProject(P.find((p) => p.id === id), false), cmd: (name, arg, id) => cmd(name, arg, id ? P.find((p) => p.id === id) : cur), setFlag: setShellFlag, flags: F };
 })();
 </script>

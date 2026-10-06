@@ -333,3 +333,57 @@ the same artifact URL (Artifact tool, `url` = the link above) so the link never 
 ### Open questions waiting for the owner
 The four questions at the end of the session 1 part 9 reply (orchestrator model and trigger, verifier depth, dock side,
 suggestion behaviour). The owner said they will answer on the next branch; do not decide them silently.
+
+---
+
+## Session 2, part 1 — 2026-10-06 — v0.3 WIP: project windows on a canvas, menu bar, Land-or-Water story (model: Opus 5.5)
+
+**Prompt:** [0016](prompts/0016-2026-10-06-project-windows-canvas-land-or-water.md) · **Branch:** `prototype/v0.3-wip-eval-story`
+(mirrored to `claude/cool-hawking-d5q52e`) · **Frozen v5:** `prototype/v0.2-multi-ai-frontend-stub` (33920dc)
+
+**Correction to the release section above:** the owner decided no release is needed (D-75). Read "the tag" there as the
+branch `prototype/v0.2-multi-ai-frontend-stub`. The remote branch `prototype/multi-ai-frontend` still exists and points
+at the same content; the owner may delete it.
+
+### What changed (mockup v6, `docs/mockup/index.html`)
+- **The file is now a workspace shell plus a project template.**
+  - The shell sits at the top and bottom of the file: the menu bar, the canvas, project windows, menus, and `window.maiShell`.
+  - The v5 app sits in the middle inside `<template id="projectTemplate">`. Each project window is an iframe named
+    `proj-<id>`, built from it with `srcdoc` plus `window.MAI_PROJECT = { id, story, start, embedded, repo }`.
+- **Stories** are a registry, `STORIES`, in the app script: `passk`, `landwater` and `blank`. A story supplies its
+  scripted replies, suggestions with reasons, criteria, extra F2P and rubric criteria, notes, leaderboard, timeline
+  thumbnails and opening sequence. Add a story there; see the Land-or-Water block (`LW_*`, `lwField`, `lwScore`,
+  `lwArt`) for the data-driven pattern.
+- **Timeline ribbon** (`renderTimeline`), **orchestrator model choice** (`orchPick`), **F2P and rubric verifiers**
+  (`extraCriteria`, `probePassK`, `F2P_SELFTEST`, `rubricGrade`), and the **shell link** (`report`, `CMDS`, message
+  listener).
+- **Owner answers applied**: the orchestrator runs automatically on Opus 5.5 at low effort (free local model at a $0
+  cap); one F2P and one rubric check per project; the dock stays on the right. Question 4 is still open.
+- **New flags** (v5 behaviour as the other value): `workspace`, `menuBar`, `timeline`, `ttScroll`, `orchModel`,
+  `checkKinds`. New `data-dbg` names are listed in `ELEMENTS`, and `HISTORY` has a v6 row.
+
+### Current state
+- The canvas opens with three projects:
+  - Land or Water?, complete in 3 steps;
+  - pass@k vs pass^k, as in v5;
+  - Land or Water? · guided from step 1, waiting for the owner to accept suggestions.
+- The menu bar shows "3 need you".
+- `npm test` passes and `npm run check:mockup` passes 29 of 29.
+- The mockup is republished at the same Artifact URL.
+
+### How to verify
+1. Run `npm install && npm test && npm run check:mockup`.
+2. Open `docs/mockup/index.html`, or the Artifact.
+3. Double-click the "Land or Water? · guided from step 1" title bar, then press **Use and send** on the timeline's ghost
+   card twice. The status pill goes Running → Needs you, and the menu bar shows a toast.
+4. Click the timeline's Step 1 card. Playback starts and every pane is scrolled to its latest reply.
+5. In the Land or Water? project, open **Artifacts** for run 3 to see four shaded and error maps side by side.
+6. View › "One project fills the screen", then Help › Flags › Menu bar = plain, gives back the v5 layout.
+
+### Next steps
+1. Owner review of v6; answer question 4 (suggestion behaviour); confirm "p2f" means fail-to-pass (D-78).
+2. Backend for projects: one state store per project, and a workspace endpoint listing project status so the canvas
+   stays light (L-29).
+3. Real verifiers: run artifacts headless for F2P, and add a rubric grader call with the threshold in `harness.yaml`.
+4. A real Land-or-Water runner: batch asks, logprobs where available, a k-sample fallback, cost estimate before sending
+   (L-31, L-32).
