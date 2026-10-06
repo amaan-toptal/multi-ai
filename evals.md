@@ -403,3 +403,23 @@
 - **L-27 Verifiers derived from prompt wording are shallow** (keywords, sentence counts). They make the loop visible but are
   not proof of correctness; real verifiers should execute artifacts and compare numbers.
 - **L-28 Orchestrator cost is charged even for free-only runs**; with the cap at $0 it should run on a free local model.
+
+---
+
+## 2026-10-06 — release prototype/multi-ai-frontend (prompt 0015)
+
+### Decisions taken without asking
+- **D-71 The release is an annotated git tag** carrying the release notes, plus `docs/releases/prototype-multi-ai-frontend.md`.
+  The GitHub connector in this session has no create-release tool and `gh` is not authenticated, so the GitHub Release page
+  itself has to be created from the tag by the owner (one step: Releases → Draft a new release → choose the tag → paste the
+  notes file).
+- **D-72 No new branch yet.** The owner said work continues on a new branch after they answer the open questions; the name is
+  left to that turn.
+- **D-73 Added `docs/mockup/check.mjs` and `npm run check:mockup`** so agents building on the tag can verify the main flows.
+
+### Evaluations performed
+- **E-17** `npm test` passes. `npm run check:mockup`: 14 of 14 checks pass after B-24.
+
+### Bugs found (fixed)
+- **B-24** The playback banner's buttons sat at the right edge, under the floating repo window, so "Back to latest" could not
+  be clicked there (found by the new smoke test). The buttons now come right after the badge, on the left.

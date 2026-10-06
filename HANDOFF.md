@@ -253,3 +253,83 @@ Artifact → press **Use** on the suggestion → Ctrl/⌘+Enter → watch run 4 
 ### Next steps
 Owner review. Open questions are in the reply (orchestrator model and trigger, verifier depth, dock side, suggestion
 behaviour). Backend unchanged as next big step.
+
+---
+
+## Release: prototype/multi-ai-frontend — 2026-10-06 (model: Opus 5.5)
+
+**Prompt:** [0015](prompts/0015-2026-10-06-tag-prototype-frontend-release.md) · **Tag:** `prototype/multi-ai-frontend`
+(annotated) · **Release notes:** [docs/releases/prototype-multi-ai-frontend.md](docs/releases/prototype-multi-ai-frontend.md)
+
+This section is written for any agent (or person) who builds on top of this tag. Read it, then CLAUDE.md, then spec.md
+v0.6 (the newest plan) before changing anything.
+
+### What the tag contains
+- `docs/mockup/index.html`: the frontend prototype (mockup v5). One self-contained file in claude.ai Artifact page format
+  (no `<!doctype>`/`<html>`/`<body>`; the artifact host adds them; browsers render it fine as is). All replies are
+  simulated. Published at https://claude.ai/artifact/7ggi9Tv2SPFmKTY33V8tgx.
+- `docs/mockup/check.mjs`: smoke test, `npm run check:mockup`.
+- `server/`, `public/`, `test/`: the v0.1 app (Claude-only multi-variant runner with SSE, git per workspace, ledger). It does
+  not implement the mockup's UI yet. `npm test` covers it with a mock Messages API.
+- `docs/demo/`: the older scripted playground (v0.1 era), kept for history. Frozen copy of v0.1: branch
+  `prototype/v0.1-scripted-playground`.
+- Records: `prompts/` (every owner prompt, verbatim), `spec.md` (plan versions), `evals.md` (decisions D-, evaluations E-,
+  bugs B-, risks L-), this file. All four are append-only.
+
+### How to start
+```bash
+git fetch origin --tags
+git checkout -b <your-branch> prototype/multi-ai-frontend
+npm install && npm test              # v0.1 server tests, no key needed
+npm run check:mockup                 # 14 UI checks; needs Playwright + Chromium
+# if playwright is not resolvable: PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs npm run check:mockup
+```
+Open `docs/mockup/index.html` directly in a browser to use it. To update the owner's preview, republish the same file to
+the same artifact URL (Artifact tool, `url` = the link above) so the link never changes.
+
+### Map of docs/mockup/index.html
+| Part | Where to look | Notes |
+|---|---|---|
+| Design tokens | `:root` and the two dark blocks at the top of `<style>` | every colour is a token; light + dark; `--tt*` = playback colour, `--ttp*` = old pink |
+| v5 styles | block starting `/* v5 additions` | flags, docking, steps, playback, artifacts window, element-name overlay |
+| Markup | `<div class="app" id="app">` | menu bar, browser (prompt bar → tab strip → banners → panes), dock, footer, export sheet |
+| Provider data | `PROVIDERS`, `MCP_CATALOG` | models, prices ($/Mtok), reasoning controls, endpoints. Non-Anthropic values are placeholders |
+| Scripted content | `V1`–`V4`, `ART`, `chartArt`, `SAMPLE`, `SUGGEST` | the opening runs and the suggested-prompt run; other prompts get generic simulated replies |
+| Flags | `FLAG_DEFS`, `F`, `setFlag`, `applyFlags`, Flags window | each flag's other option is the previous behaviour; stored in localStorage `mai-flags` |
+| Element names | `ELEMENTS` + `data-dbg` attributes | the owner refers to parts of the UI by these names |
+| Versions | `HISTORY` | mockup versions with commits; add a row whenever you publish |
+| State | `st` | tabs, commits, files (Map path → {content, kind, label}), head, time-travel cursor `tt`, history, suggestion |
+| Windows | `makeWin`, `setWinState`, `paintDock` | movable/resizable/minimizable windows: repo, artifacts, file windows, flags |
+| Repo as files | `snapshot`, `toYaml`, `promptMd`, `changesSince`, `workingFiles` | harness state is `prompt.md` + `harness.yaml`; unsent changes are diffs against `st.head` |
+| Commits | `addCommit`, `renderCommits`, `paintCommit`, `groupKey` | every commit stores a full snapshot in `c.state`; compact list grouped by run |
+| Time travel | `setTT`, `applyPreview`, `applyThread`, `statusAt`, `viewTabs` | thread elements carry `data-seq` = the commit that created them; anything newer is hidden |
+| Restore / reset | `restoreSnap`, `restore`, `resetWorking`, `commitWorking` | never rewrite history: restore stages, reset is an empty commit |
+| Runs | `send`, `startRun`, `stream`, `finishRun`, `stopRun`, `skipRun`, `endOne` | reply commits are created when a reply finishes; spend cap stops paid tabs only (`isFree`) |
+| Orchestrator | `orchestrate`, `orchSummary`, `orchVerify`, `orchSuggest`, `criteriaFor` | three commits after each run; verifiers are deterministic checks derived from the prompt |
+| Artifacts window | `openArtsWin`, `renderArts`, `artsByRun` | follows time travel; iframes only re-render when content changes |
+| Opening state | bottom of the script | three runs (plus orchestrator steps) built with `send(…, true)` |
+
+### Rules that keep it working
+- Append-only everywhere: HANDOFF/spec/evals/prompts files, and the mockup's own commit log (restore, reset and branch add
+  commits). Log every owner prompt verbatim in `prompts/`.
+- New UI behaviour goes behind a flag with the old behaviour as an option; new major elements get a `data-dbg` name in
+  `ELEMENTS`; each publish adds a `HISTORY` row (CLAUDE.md, "Mockup conventions").
+- Any element added to a pane thread must get `data-seq` (the commit number that makes it exist) or time travel will show it
+  too early.
+- Strings that contain HTML for artifacts must write `<\/script>`, not `</script>`.
+- Keep `npm run check:mockup` green and extend it when you add a flow.
+- End every reply to the owner with the published mockup (or another artifact) linked.
+
+### Where the backend picks up (spec v0.3–v0.6)
+1. Provider adapters behind the tab model: Anthropic first (`@anthropic-ai/sdk`, adaptive thinking + effort), then one
+   OpenAI-compatible adapter for OpenAI, Groq, OpenRouter and Ollama, then Gemini and xAI.
+2. One git repo per experiment with the exact layout the mockup shows (`prompt.md`, `harness.yaml`, `spec.md`,
+   `ledger.jsonl`, `runs/NN/<tab>/…`, `orchestrator/`, `verifiers/`, `evals/`); read past states with `git show <sha>:path`
+   instead of the mockup's in-memory snapshots.
+3. Harness-run MCP client shared by all tabs; per-tab web search.
+4. Orchestrator and verifiers as real calls; export as zip and `git bundle create --all`; restore from either.
+5. Remove the v0.1 seeded examples from `server/examples.js` when the new UI replaces `public/`.
+
+### Open questions waiting for the owner
+The four questions at the end of the session 1 part 9 reply (orchestrator model and trigger, verifier depth, dock side,
+suggestion behaviour). The owner said they will answer on the next branch; do not decide them silently.
