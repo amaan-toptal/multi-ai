@@ -423,3 +423,10 @@
 ### Bugs found (fixed)
 - **B-24** The playback banner's buttons sat at the right edge, under the floating repo window, so "Back to latest" could not
   be clicked there (found by the new smoke test). The buttons now come right after the badge, on the left.
+- **D-74 (correction to D-71)** Pushing the tag fails in this environment: the git proxy disconnects on every tag push
+  ("unexpected disconnect while reading sideband packet", 4 tries with backoff) while branch pushes work. The annotated
+  tag exists only in the session clone. A branch `prototype/multi-ai-frontend` was pushed at the release commit `43df54b`
+  as the durable pointer, matching the earlier `prototype/v0.1-scripted-playground` convention. The owner can create the
+  tag and the GitHub Release in one step from that commit (Releases → Draft a new release → new tag
+  `prototype/multi-ai-frontend` on target `prototype/multi-ai-frontend`). Git then warns that the name is ambiguous
+  between branch and tag; deleting the branch afterwards removes the warning.
