@@ -508,3 +508,64 @@
   point, which multiplies the cost. Listed as an open question in the story's spec.
 - **L-33** x.com is blocked here, so the tweet was read from search snippets. Details beyond its text, such as the exact grid
   or the plotted image, are inferred: 16,200 = 180 × 90 suggests a 2° grid.
+
+---
+
+## 2026-10-06 — v7: snappier canvas, Space panning, maximize, API keys, alternatives (prompt 0017)
+
+### Decisions taken without asking
+- **D-88 Measured before claiming "snappier".** Headless Chromium, 80-move drag, 3 repeats:
+  - v6: 23–30 ms average frame, up to 9 frames over 34 ms.
+  - First v7 attempt (GPU-layer hint `will-change` plus turning off iframe pointer events while moving): worse, 27–45 ms
+    average and up to 66 long frames.
+  - An A/B of each change showed `will-change` was the cost, so both were dropped.
+  - Final v7: 19–28 ms average, up to 4 long frames.
+  - What remains is painting at most once per animation frame, the dot grid on its own layer (v6 repainted the whole
+    canvas background on every move), a shorter zoom animation (0.35 s → 0.18 s), and line-mode wheel scaling.
+  - Headless software rendering is not the owner's GPU, so real-hardware feel is still to be confirmed.
+- **D-89 Space + drag / scroll uses a transparent shield over the projects** while Space is held. Projects forward Space
+  presses to the shell unless the focus is in a text field, so typing a space in the prompt still works. The middle mouse
+  button pans as well.
+- **D-90 Maximize** fills the canvas at 100% zoom, hides the other projects (they keep running), and asks the browser for
+  full screen, which an embedded page may refuse. Escape or a second double-click restores the previous size and view.
+  The previous behaviour (zoom to fit) is flag `titleDblClick=focus`.
+- **D-91 Keys live in the shell** and reach projects by postMessage (memory only). "Remember" stores them in localStorage
+  under `mai-keys`. They are never put in `harness.yaml`, the ledger, exports or the repo, consistent with CLAUDE.md.
+- **D-92 Live calls are per tab, by key** (flag `liveCalls=auto`). Scripted openings run instantly and never go live, so
+  the stories stay deterministic.
+- **D-93 Claude tabs use the official SDK** from jsDelivr with `dangerouslyAllowBrowser`, as the Claude API guidance asks
+  for an SDK over raw HTTP. Refusal fallbacks (`fallbacks: "default"`) are on by default for Opus 5.5, Sonnet 5.5 and
+  Fable 5.1, per the same guidance. The other providers use plain `fetch` to their REST APIs.
+- **D-94 `/mockup` route** on the local server wraps the Artifact-format file in a doctype, so it renders in standards mode.
+- **D-95 `alternatives.md`** was researched by a subagent, checked against GitHub metadata, and reviewed. Unverified items are
+  marked in the file. I fixed one slip: ChatALL is Apache-2.0, not MIT.
+
+### Evaluations performed
+- **E-21** `npm test` passes. `npm run check:mockup` passes 41 of 41. New checks cover:
+  - panning 1:1 with no selection;
+  - Space shield, Space + drag and Space + scroll over a project;
+  - maximize and restore;
+  - the keys window with 7 providers;
+  - a live OpenAI call against a mocked endpoint, where the tab is marked live and shows the mocked reply.
+- **E-22** The Claude request shape was checked against a mocked `fetch` in the real SDK (0.131.0):
+  - URL `/v1/messages?beta=true` with the `server-side-fallback-2026-07-01` header;
+  - body with `thinking: adaptive/summarized`, `output_config.effort` and `fallbacks: "default"`.
+- **E-23** Real provider calls were not made from here: no keys, and jsDelivr and most vendor hosts are blocked by this
+  environment's proxy. The first real test is the owner's.
+
+### Bugs found (fixed)
+- **B-30** Dragging on the canvas or a resize corner selected the project iframes. The canvas and menu bar are now
+  `user-select:none`, and every drag clears the selection.
+- **B-31** A maximized project kept the blue focus ring, and the neighbouring windows peeked in at the edge (CSS
+  precedence). Maximized windows now win the cascade, and the others are hidden while one is maximized.
+
+### Loopholes / risks
+- **L-34** The claude.ai Artifact page probably blocks outside connections (connect-src) and module loads from jsDelivr, so
+  live calls are expected to work from a local copy or `npm start` → `/mockup`, not from the published link. The UI says so.
+- **L-35** Browser calls depend on each provider's CORS. Anthropic (with the SDK's browser opt-in), OpenAI, Gemini, Groq and
+  OpenRouter are expected to allow it; xAI is unknown; Ollama needs `OLLAMA_ORIGINS`. Errors name the host and the likely
+  fix.
+- **L-36** Some model ids in the catalogue are placeholders (e.g. `gemini-3-pro`, `grok-4-fast`). A wrong id shows the
+  provider's 404 in the pane; the catalogue should be refreshed from each provider's models endpoint.
+- **L-37** Keys in localStorage are readable by any script on the same origin, which includes `file://` pages opened in
+  the same browser profile. "Remember" is off by default.

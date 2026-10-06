@@ -387,3 +387,51 @@ at the same content; the owner may delete it.
 3. Real verifiers: run artifacts headless for F2P, and add a rubric grader call with the threshold in `harness.yaml`.
 4. A real Land-or-Water runner: batch asks, logprobs where available, a k-sample fallback, cost estimate before sending
    (L-31, L-32).
+
+---
+
+## Session 2, part 2 — 2026-10-06 — v7: snappier canvas, Space panning, maximize, API keys, alternatives (model: Opus 5.5)
+
+**Prompt:** [0017](prompts/0017-2026-10-06-snappy-canvas-space-pan-api-keys-alternatives.md) · **Branch:** `prototype/v0.3-wip-eval-story`
+(mirrored to `claude/cool-hawking-d5q52e`)
+
+### What changed
+- **Canvas** (shell script, "canvas: pan and zoom" block):
+  - `applyView` paints at most once per frame through `requestAnimationFrame`, and the dot grid is its own layer
+    (`#grid`);
+  - Space + drag and Space + scroll pan through `#panShield`, and projects forward Space key presses;
+  - the middle mouse button pans;
+  - drags clear the selection and the canvas is `user-select:none`;
+  - `toggleMax` maximizes or restores a project on double-click, the green light, View › Maximize, or Esc to restore.
+- **API keys**:
+  - **Shell**: `KEY_PROVIDERS`, `openKeys`, `testKey`, the `#keysBtn` button in the menu bar, and a new ◆ multi-ai app
+    menu.
+  - **Project**: `KEYS`, `liveFor`, `callAnthropic` (official SDK), `callOpenAI`, `callGemini`, `callChat` (xAI, Groq,
+    OpenRouter, Ollama) and `runLive`.
+  - `startRun` routes keyed tabs to `runLive`; `stopRun` aborts the request and reports API errors.
+  - Pane headers show "● live" for keyed tabs.
+- New flags (v6 behaviour kept as the other value): `titleDblClick`, `spacePan`, `liveCalls`. New `data-dbg` names:
+  `pan-shield`, `api-keys-button`, `api-keys-window`, `app-menu`.
+- `server/index.js` serves the mockup at `/mockup`.
+- `alternatives.md` (repo root) lists similar projects with licenses and what to borrow.
+
+### Current state
+- `npm test` passes, and `npm run check:mockup` passes 41 of 41.
+- Live calls are verified only against a mocked OpenAI endpoint and a mocked SDK `fetch`. No real provider call has been
+  made from this environment (E-23).
+
+### How to verify (owner)
+1. `npm install && npm start`, then open http://localhost:8080/mockup. Opening `docs/mockup/index.html` directly also
+   works.
+2. Click **API keys** in the menu bar, paste a key (e.g. Anthropic), then press **Test** and **Save**.
+3. The matching pane header turns green ("● live").
+4. In the pass@k project, type a prompt and press Ctrl/⌘+Enter. The keyed tab streams the real reply; the others stay
+   simulated.
+5. Hold Space and drag or scroll over a project. Double-click a title bar, then press Esc.
+
+### Next steps
+1. Owner tests real calls and canvas feel; fix model ids that 404 (L-36).
+2. Orchestrator as a real call when an Anthropic key exists (Opus 5.5 at low effort), writing real spec and verifiers.
+3. Backend: keys in the server env, the same provider adapters server-side, a per-project state store.
+4. Verifier format modelled on promptfoo/Inspect, with SWE-bench's FAIL_TO_PASS and PASS_TO_PASS naming
+   (see `alternatives.md`).

@@ -228,6 +228,14 @@ app.get("/api/workspaces/:ws/log", async (req, res) => {
 // Scripted, no-key playground (the same page published as the chat artifact).
 app.get("/demo", (req, res) => res.sendFile(path.join(__dirname, "..", "docs", "demo", "index.html")));
 
+// The workspace mockup. The file is in Artifact page format (no doctype), so wrap it to render in standards mode.
+// Opening it here, rather than on claude.ai, lets tabs with an API key call the real providers from your browser.
+app.get("/mockup", async (req, res) => {
+  const { readFile } = await import("node:fs/promises");
+  const body = await readFile(path.join(__dirname, "..", "docs", "mockup", "index.html"), "utf8");
+  res.type("html").send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${body}</body></html>`);
+});
+
 app.get("/healthz", (req, res) => res.send("ok"));
 
 app.listen(PORT, () => {

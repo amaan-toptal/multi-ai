@@ -334,3 +334,36 @@ like v4", "move prompt-suggestion above prompt-bar".
   with a threshold). Results per tab per run stay in `evals/run-NN.json`.
 - Land-or-Water needs batch asks (16,200 per model per run), token probabilities where the API returns them, and a
   k-sample fallback where it does not.
+
+---
+
+## v0.8 — 2026-10-06 — real API calls from the browser, canvas handling, alternatives (prompt 0017)
+
+### Change to the plan
+- **Real calls start in the browser, before the backend.** The menu bar has an **API keys** window covering Anthropic,
+  OpenAI, Google Gemini, xAI, Groq, OpenRouter and a local Ollama. Each provider has where to get a key, the cost, a Test
+  button and Save. A tab whose provider has a key calls the real API on the next Send, with the tab's model, effort or
+  thinking setting and web-search choice; tabs without a key stay simulated, so the scripted stories still work.
+  - **Claude tabs** use the official Anthropic TypeScript SDK (loaded from jsDelivr):
+    - Opus 5.5, Sonnet 5.5 and Fable 5.1 get adaptive thinking with summarized display, the tab's effort, and
+      server-side refusal fallbacks (`fallbacks: "default"`);
+    - Haiku 4.5 uses a thinking budget.
+  - **OpenAI** uses the Responses API; **Gemini** uses `generateContent`; **xAI, Groq, OpenRouter and Ollama** use
+    OpenAI-compatible chat completions.
+  - A fenced `html` block in a reply becomes the run's artifact.
+  - Cost comes from each reply's real token usage and counts toward the spend cap.
+  - Keys stay in the browser: in memory, or in localStorage when the owner ticks Remember. They are never written to a
+    project repo or export.
+- The local server serves the mockup at `/mockup` (standards mode), the easiest place to test real calls.
+- **Canvas handling:**
+  - panning paints at most once per frame;
+  - Space + drag and Space + scroll pan from anywhere, also over a project;
+  - the middle mouse button pans;
+  - drags never select page content;
+  - double-clicking a title bar (or the green light) maximizes that project to the whole workspace and asks the browser
+    for full screen, and doing it again or pressing Esc restores it.
+- `alternatives.md` documents similar projects, their licenses and what to borrow; promptfoo, Inspect AI and SWE-bench
+  shape the verifier format next.
+
+### Still the plan for the PoC backend
+Keys move to the server env for shared use. The browser path stays for single-user testing.

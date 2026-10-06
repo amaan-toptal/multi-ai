@@ -27,7 +27,7 @@ await p.waitForTimeout(1500);
 
 // workspace shell
 check((await p.$$('.pw')).length === 3, 'canvas opens with 3 project windows');
-check((await p.$$('.mtop')).length === 6, 'menu bar has File, Edit, View, Project, Window, Help');
+check((await p.$$('.mtop')).length === 7, 'menu bar has the app menu plus File, Edit, View, Project, Window, Help');
 check(/3 need you/.test(await p.textContent('#needsBtn')), 'menu bar counts 3 projects that need you');
 const z0 = await p.evaluate(() => window.maiShell.view.z);
 await p.click('#zIn'); await p.waitForTimeout(450);
@@ -36,6 +36,40 @@ await p.click('#zFit'); await p.waitForTimeout(450);
 await p.click('.mtop[data-m="file"]');
 check((await p.$$('.mpop button')).length >= 6, 'File menu opens with its items');
 await p.keyboard.press('Escape');
+
+// v7: panning without selecting, Space + drag / scroll, maximize
+const sel = () => p.evaluate(() => getSelection().rangeCount === 0 || getSelection().isCollapsed);
+const vx = () => p.evaluate(() => ({ ...window.maiShell.view }));
+const box = await p.$eval('#canvas', (c) => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+let v0 = await vx();
+await p.mouse.move(box.x + 8, box.y + 8); await p.mouse.down(); await p.mouse.move(box.x + 400, box.y + 300, { steps: 8 }); await p.mouse.up();
+await p.waitForTimeout(100);
+let v1 = await vx();
+check(v1.x - v0.x > 350 && v1.y - v0.y > 250, 'dragging empty canvas pans 1:1 with the pointer');
+check(await sel(), 'dragging across projects selects nothing');
+const pr = await p.$eval('[data-dbg="project-window:landwater"] .pw-body', (e) => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+await p.mouse.move(pr.x, pr.y); await p.keyboard.down('Space'); await p.waitForTimeout(50);
+check(await p.$eval('#panShield', (e) => getComputedStyle(e).display === 'block'), 'holding Space shows the pan shield over the projects');
+v0 = await vx();
+await p.mouse.down(); await p.mouse.move(pr.x - 200, pr.y - 120, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(80);
+v1 = await vx();
+check(Math.abs(v1.x - v0.x + 200) < 3 && Math.abs(v1.y - v0.y + 120) < 3, 'Space + drag over a project pans the canvas');
+v0 = v1; await p.mouse.wheel(0, 150); await p.waitForTimeout(80); v1 = await vx();
+check(Math.abs(v1.y - v0.y + 150) < 3, 'Space + scroll pans the canvas instead of the project');
+await p.keyboard.up('Space'); await p.waitForTimeout(50);
+check(await p.$eval('#panShield', (e) => getComputedStyle(e).display === 'none'), 'releasing Space hides the shield');
+check(await sel(), 'Space + drag selects nothing');
+await p.dblclick('[data-dbg="project-window:passk"] .pw-title'); await p.waitForTimeout(350);
+const mx = await p.evaluate(() => { const w = document.querySelector('[data-dbg="project-window:passk"]').getBoundingClientRect(), c = document.querySelector('#canvas').getBoundingClientRect(); return [Math.round(w.width), Math.round(c.width), Math.round(w.left - c.left), Math.round(w.top - c.top)]; });
+check(mx[0] === mx[1] && Math.abs(mx[2]) <= 1 && Math.abs(mx[3]) <= 1, `double-clicking a title bar maximizes the project (${mx.join(', ')})`);
+await p.dblclick('[data-dbg="project-window:passk"] .pw-title'); await p.waitForTimeout(350);
+check(await p.$eval('[data-dbg="project-window:passk"]', (e) => !e.classList.contains('maxed') && e.style.width === '1180px'), 'double-clicking again restores its size');
+await p.evaluate(() => window.maiShell.fitAll(false));
+
+// v7: API keys window
+await p.click('#keysBtn');
+check((await p.$$('.kcard')).length === 7, 'API keys window lists 7 providers with instructions');
+await p.click('.kfoot .primary');
 
 // Land or Water? story: three steps, the last two from the orchestrator
 const lw = p.frame({ name: 'proj-landwater' });
@@ -60,6 +94,11 @@ check(await f.$eval('#suggest', (e) => !e.hidden), 'orchestrator suggestion is s
 check(+(await f.$eval('#artsCount', (e) => e.textContent)) === 4, '4 artifacts in the opening state');
 const opening = +(await f.$eval('#repoCount', (e) => e.textContent));
 check(opening >= 20, `repo has the opening history (${opening} commits)`);
+await p.route('https://api.openai.com/v1/responses', (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+  body: JSON.stringify({ output: [{ type: 'reasoning', summary: [{ text: 'mock reasoning' }] }, { type: 'message', content: [{ type: 'output_text', text: 'LIVE-TEST pass@k counts at least one success; pass^k needs all k to succeed.\n```html\n<canvas></canvas><script>const f=(p,k)=>1-(1-p)**k, g=(p,k)=>p**k<\/script>\n```' }] }], usage: { input_tokens: 120, output_tokens: 300, output_tokens_details: { reasoning_tokens: 40 } } }) }));
+await p.evaluate(() => window.maiShell.setKeys({ openai: 'sk-test' }));
+await p.waitForTimeout(150);
+check(/live/.test(await f.$eval('[data-dbg="pane-header:02"] .ep', (e) => e.textContent)), 'a tab with a key is marked live');
 await f.click('#suggestUse');
 await f.focus('#prompt');
 await p.keyboard.press('Control+Enter');
@@ -68,6 +107,8 @@ await f.click('#repoBtn'); await p.waitForTimeout(200);
 const top = await f.$$eval('#commits > li', (ls) => ls.slice(0, 4).map((l) => l.innerText));
 check(/Run 4/.test(top[0]), 'run 4 appears as a group');
 check(top.slice(1).every((t) => t.includes('Orchestrator')), 'three orchestrator steps follow the replies');
+check(/LIVE-TEST/.test(await f.$eval('[data-dbg="pane-thread:02"]', (e) => e.textContent)), 'the keyed tab shows the real (mocked) API reply');
+await p.evaluate(() => window.maiShell.setKeys({}));
 const qwen = await f.$$eval('.checks', (cs) => cs.map((c) => c.textContent).pop());
 check(/F2P ✗/.test(qwen), "F2P probe catches qwen3's wrong pass@k formula in run 4");
 await f.click('#artsBtn'); await p.waitForTimeout(500);

@@ -43,8 +43,31 @@ body{margin:0;background:var(--canvas);color:var(--fg);font-family:var(--font-ui
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .ws{position:relative;height:100%;display:flex;flex-direction:column;overflow:hidden;overflow:clip}
-.wbar{position:relative;z-index:50;display:flex;align-items:center;gap:4px;min-height:30px;padding:2px 12px;background:var(--bar-bg);color:var(--bar-fg);border-bottom:1px solid var(--bar-line);backdrop-filter:blur(14px);font-size:13px;white-space:nowrap}
-.wbar .logo{font-weight:700;padding:0 8px 0 2px}
+.wbar{user-select:none;-webkit-user-select:none;position:relative;z-index:50;display:flex;align-items:center;gap:4px;min-height:30px;padding:2px 12px;background:var(--bar-bg);color:var(--bar-fg);border-bottom:1px solid var(--bar-line);backdrop-filter:blur(14px);font-size:13px;white-space:nowrap}
+.mtop.logo{font-weight:700}
+.keysbtn{border:1px solid var(--bar-line);background:transparent;border-radius:999px;padding:1px 10px;font-size:12px;cursor:pointer;color:var(--bar-muted)}
+.keysbtn.on{border-color:var(--ok-ring);color:var(--ok);font-weight:600}
+.wsheet .keys{max-width:760px}
+.keys .lead{margin:0 0 6px;color:var(--muted)}
+.keys .warn{margin:0 0 12px;padding:8px 10px;border-radius:8px;background:var(--panel-2);font-size:12.5px;color:var(--muted)}
+.keys code{font:12px var(--font-mono)}
+.klist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.kcard{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.kcard.on{border-color:var(--ok-ring)}
+.khead{display:flex;align-items:center;gap:8px}
+.khead a{margin-left:auto;color:var(--accent);font-size:12.5px}
+.kstate{font-size:11px;padding:0 7px;border-radius:999px;background:var(--panel-2);color:var(--muted)}
+.kcard.on .kstate{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.ktabs{color:var(--muted);font-size:11.5px}
+.khow{margin:0;font-size:12.5px;line-height:1.45}
+.krow{display:flex;gap:6px}
+.krow input{flex:1;min-width:0;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--fg);font:12px var(--font-mono)}
+.krow button,.kfoot button{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:4px 10px;cursor:pointer;font-size:12.5px}
+.krow button.primary,.kfoot button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.kout{min-height:16px;font-size:12px;color:var(--muted)}
+.kout.ok{color:var(--ok)} .kout.bad{color:#c0392b}
+.kfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:12.5px}
+@media (max-width:720px){.keysbtn{display:none}}
 .menus{display:flex;align-items:center;gap:1px;min-width:0;overflow:hidden}
 .mtop{border:0;background:transparent;padding:3px 9px;border-radius:5px;cursor:default;font-size:13px}
 .mtop:hover,.mtop[aria-expanded="true"]{background:var(--bar-line)}
@@ -67,8 +90,16 @@ button{font:inherit;color:inherit}
 .mpop hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
 .mpop .sec{padding:4px 9px 2px;font-size:11px;color:var(--muted)}
 
-.canvas{position:relative;flex:1;min-height:0;overflow:hidden;overflow:clip;background-color:var(--canvas);background-image:radial-gradient(var(--dots) 1px,transparent 1.4px);touch-action:none;cursor:grab}
-.canvas.panning{cursor:grabbing}
+.canvas{position:relative;flex:1;min-height:0;overflow:hidden;overflow:clip;background-color:var(--canvas);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.grid{position:absolute;inset:-48px;background-image:radial-gradient(var(--dots) 1px,transparent 1.4px);background-size:12px 12px;pointer-events:none}
+.ws.space iframe{pointer-events:none}
+.panshield{position:absolute;inset:0;z-index:30;display:none;cursor:grab}
+.ws.space .panshield{display:block}
+.ws.panning .panshield,.ws.panning .canvas{cursor:grabbing}
+.ws .pw.maxed{border-radius:0;box-shadow:none;z-index:5}
+.ws.has-max .pw:not(.maxed){visibility:hidden}
+.pw.maxed .pw-resize{display:none}
+.ws.has-max .hintbar{display:none}
 .world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
 .pw{position:absolute;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:var(--chrome);box-shadow:var(--shadow),0 0 0 1px var(--chrome-line);cursor:default}
 .pw.current{box-shadow:var(--shadow),0 0 0 3px var(--accent)}
@@ -104,7 +135,8 @@ button{font:inherit;color:inherit}
 .zoomctl .pct{min-width:52px;font:12px var(--font-mono)}
 .hintbar{position:absolute;left:14px;bottom:14px;z-index:40;max-width:calc(100% - 290px);padding:5px 10px;border-radius:9px;background:var(--bar-bg);backdrop-filter:blur(12px);box-shadow:0 0 0 1px var(--bar-line);color:var(--bar-muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ws.single .zoomctl,.ws.single .hintbar{display:none}
-.ws.single .canvas{background-image:none;cursor:default}
+.ws.single .canvas{cursor:default}
+.ws.single .grid{display:none}
 .ws.single .world{transform:none!important;width:100%;height:100%}
 .ws.single .pw{display:none}
 .ws.single .pw.current{display:flex;left:0!important;top:0!important;width:100%!important;height:100%!important;border-radius:0;box-shadow:none}
@@ -135,16 +167,18 @@ button{font:inherit;color:inherit}
 
 <div class="ws" id="ws">
   <div class="wbar" data-dbg="shell-menubar">
-    <span class="logo">◆ multi-ai</span>
     <nav class="menus" id="menus" aria-label="Menu bar"></nav>
     <span class="spacer"></span>
+    <button type="button" class="keysbtn" id="keysBtn" data-dbg="api-keys-button">API keys</button>
     <button type="button" class="needs none" id="needsBtn" data-dbg="needs-you" title="Jump to the next project that is waiting for you">0 need you</button>
     <span class="stat" id="wsSpend" title="Total spend across all projects"></span>
     <span class="stat clock" id="wsClock"></span>
   </div>
   <div class="canvas" id="canvas" data-dbg="canvas">
+    <div class="grid" id="grid" aria-hidden="true"></div>
     <div class="world" id="world"></div>
-    <div class="hintbar" id="hintbar">Drag empty space to pan · ⌘/Ctrl + scroll to zoom · double-click a title bar to focus a project</div>
+    <div class="panshield" id="panShield" data-dbg="pan-shield" title="Space held: drag or scroll to move around"></div>
+    <div class="hintbar" id="hintbar">Drag empty space or hold Space and drag to pan · ⌘/Ctrl + scroll to zoom · double-click a title bar to maximize</div>
     <div class="zoomctl" data-dbg="zoom-controls" role="group" aria-label="Zoom">
       <button type="button" id="zOut" aria-label="Zoom out" title="Zoom out (⌘/Ctrl −)">−</button>
       <button type="button" class="pct" id="zPct" title="Zoom to 100% on the current project">50%</button>
@@ -313,6 +347,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 .app.past .pane-head{background:var(--tt-soft)}
 .pane-head{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted);white-space:nowrap}
 .pane-head .who{font-weight:650;color:var(--fg)}
+.pane-head .ep.live{color:var(--ok);font-weight:600}
 .pane-head .ep{font-family:var(--font-mono);font-size:10.5px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .badge{flex:none;font-size:10.5px;font-weight:650;padding:1px 7px;border-radius:999px}
 .badge.free{background:var(--ok-soft);color:var(--ok)}
@@ -672,7 +707,7 @@ kbd{font:11px var(--font-mono);padding:1px 5px;border-radius:4px;border:1px soli
 <div class="app" id="app">
   <div class="menubar" data-dbg="menu-bar">
     <span class="app-name">multi-ai harness</span>
-    <span class="ver" id="ver" title="Mockup version. Earlier versions are listed in Flags.">mockup v6</span>
+    <span class="ver" id="ver" title="Mockup version. Earlier versions are listed in Flags.">mockup v7</span>
     <span class="session">vnc://harness-01 · macOS VM · tabs call provider APIs</span>
     <span class="spacer"></span>
     <span class="budget" id="budget" data-dbg="spend-cap" title="Spend cap for paid tabs. Free tabs (local open models) are never blocked by it.">
@@ -754,7 +789,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const pad = (n) => String(n).padStart(2, '0');
 const MAX_TABS = 5;
-const MOCKUP = 'v6';
+const MOCKUP = 'v7';
 const PROJ = Object.assign({ id: 'p1', story: 'passk', start: 'full', embedded: false, title: null }, window.MAI_PROJECT || {});
 const IN_SHELL = window.parent !== window;
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
@@ -879,12 +914,15 @@ const FLAG_DEFS = [
   { key: 'orchestrator', label: 'Orchestrator after each run', opts: { on: 'Summary + spec, verifiers, next prompt', off: 'Off (v4)' }, def: 'on', note: 'Applies to the next run.' },
   { key: 'artifactsWindow', label: 'Artifacts window', opts: { on: 'Compare-all window with its own tabs', off: 'Off: one window per file (v4)' }, def: 'on' },
   { key: 'debugIds', label: 'Element names overlay', opts: { off: 'Hidden', on: 'Shown on the page' }, def: 'off', note: 'Also visible in devtools as data-dbg attributes.' },
-  { key: 'workspace', label: 'Workspace', opts: { canvas: 'Project windows on a zoomable canvas', single: 'One project fills the screen (v5)' }, def: 'canvas', v6: true, note: 'View › Zoom to fit, or ⌘/Ctrl + scroll, zooms the canvas.' },
-  { key: 'menuBar', label: 'Menu bar', opts: { menus: 'File, Edit, View, Project, Window, Help', plain: 'Plain strip (v5)' }, def: 'menus', v6: true },
-  { key: 'timeline', label: 'Timeline ribbon', opts: { on: 'Step cards under the panes', off: 'Hidden (v5)' }, def: 'on', v6: true, note: 'Click a step to play it back.' },
-  { key: 'ttScroll', label: 'Panes during playback', opts: { bottom: 'Scroll every pane to its latest reply', keep: 'Keep the scroll position (v5)' }, def: 'bottom', v6: true },
-  { key: 'orchModel', label: 'Orchestrator model', opts: { auto: 'Opus 5.5, low effort; free local model at a $0 cap', opus: 'Opus 5.5, default effort, always (v5)' }, def: 'auto', v6: true, note: 'Owner answer to question 1. Applies to the next run.' },
-  { key: 'checkKinds', label: 'Verifier kinds', opts: { full: 'Pattern checks + one F2P probe + one rubric grade', pattern: 'Pattern checks only (v5)' }, def: 'full', v6: true, note: 'Owner answer to question 2. Applies to the next run.' },
+  { key: 'workspace', label: 'Workspace', opts: { canvas: 'Project windows on a zoomable canvas', single: 'One project fills the screen (v5)' }, def: 'canvas', ver: 'v6', note: 'View › Zoom to fit, or ⌘/Ctrl + scroll, zooms the canvas.' },
+  { key: 'menuBar', label: 'Menu bar', opts: { menus: 'File, Edit, View, Project, Window, Help', plain: 'Plain strip (v5)' }, def: 'menus', ver: 'v6' },
+  { key: 'timeline', label: 'Timeline ribbon', opts: { on: 'Step cards under the panes', off: 'Hidden (v5)' }, def: 'on', ver: 'v6', note: 'Click a step to play it back.' },
+  { key: 'ttScroll', label: 'Panes during playback', opts: { bottom: 'Scroll every pane to its latest reply', keep: 'Keep the scroll position (v5)' }, def: 'bottom', ver: 'v6' },
+  { key: 'orchModel', label: 'Orchestrator model', opts: { auto: 'Opus 5.5, low effort; free local model at a $0 cap', opus: 'Opus 5.5, default effort, always (v5)' }, def: 'auto', ver: 'v6', note: 'Owner answer to question 1. Applies to the next run.' },
+  { key: 'checkKinds', label: 'Verifier kinds', opts: { full: 'Pattern checks + one F2P probe + one rubric grade', pattern: 'Pattern checks only (v5)' }, def: 'full', ver: 'v6', note: 'Owner answer to question 2. Applies to the next run.' },
+  { key: 'titleDblClick', label: 'Double-click a project title bar', opts: { maximize: 'Maximize the project to the whole screen', focus: 'Zoom to fit it (v6)' }, def: 'maximize', ver: 'v7', note: 'Double-click again (or Esc) to restore.' },
+  { key: 'spacePan', label: 'Space + drag / scroll', opts: { on: 'Pans the canvas, even over projects', off: 'Off (v6)' }, def: 'on', ver: 'v7' },
+  { key: 'liveCalls', label: 'Real API calls', opts: { auto: 'Tabs with a key call the real API; others stay simulated', off: 'Every tab simulated (v6)' }, def: 'auto', ver: 'v7', note: 'Keys: menu bar › API keys.' },
 ];
 const ELEMENTS = [
   ['menu-bar', 'Top strip: app name, mockup version, spend cap, Flags, clock'],
@@ -928,6 +966,10 @@ const ELEMENTS = [
   ['project-titlebar', "A project window's title bar: lights, name, status, metrics"],
   ['project-status', 'Status pill: running, needs you, up to date'],
   ['needs-you', 'Menu bar button that jumps to the next project waiting for you'],
+  ['pan-shield', 'Shown while Space is held: drag or scroll anywhere to move the canvas'],
+  ['api-keys-button', 'Menu bar button that opens API keys (shows how many providers are connected)'],
+  ['api-keys-window', 'API keys & models window: where to get each key, test it, remember it'],
+  ['app-menu', 'The ◆ multi-ai menu: About, API keys, Flags'],
 ];
 const HISTORY = [
   ['v1', '312e3a8', 'A browser window per variant on a desktop'],
@@ -936,6 +978,7 @@ const HISTORY = [
   ['v4', '55d3ace', 'Time travel; reset; movable windows; prompt above tabs'],
   ['v5', 'f64f0a7 · branch prototype/v0.2-multi-ai-frontend-stub', 'Docking, step-by-step changes, playback look, artifacts window, prompt history and suggestions, Ctrl+Enter, orchestrator, flags'],
   ['v6', '8968709 · branch prototype/v0.3-wip-eval-story', 'Project windows on a zoomable canvas, File/Edit/View menus, Land-or-Water story, timeline ribbon, F2P and rubric checks, cheaper orchestrator, panes scroll to latest in playback'],
+  ['v7', 'see git log · branch prototype/v0.3-wip-eval-story', 'Snappier canvas, Space + drag/scroll to pan, no selection while dragging, double-click maximizes a project, API keys and real calls for tabs with a key'],
 ];
 const F = {};
 FLAG_DEFS.forEach((d) => { F[d.key] = d.def; });
@@ -2285,7 +2328,7 @@ function refreshTab(t, noTabs) {
   t.el.dataset.status = viewStatus(t);
   t.el.classList.toggle('ghost', !!st.tt && st.closed.includes(t));
   t.r.who.textContent = `${pad(t.id)} · ${tabLabel(t)}`;
-  t.r.ep.textContent = t.model.host || t.p.endpoint;
+  const lv = liveFor(t); t.r.ep.textContent = `${lv ? '● live · ' : ''}${t.model.host || t.p.endpoint}`; t.r.ep.classList.toggle('live', lv); t.r.ep.title = lv ? 'This tab calls the real API with your key' : 'Simulated: add a key in Settings › API keys to call the real API';
   t.r.greet.innerHTML = ''; t.r.greet.append(document.createTextNode(t.p.greet()));
   if (t.pid === 'open') t.r.greet.appendChild(el('small', null, t.model.label));
   applyThread(t);
@@ -2459,6 +2502,138 @@ promptEl.addEventListener('keydown', (e) => {
 $('#broadcast').addEventListener('submit', (e) => { e.preventDefault(); send(); });
 stopBtn.addEventListener('click', () => st.tabs.forEach((t) => { if (t.cur && t.cur.state === 'run') stopRun(t, 'user'); }));
 
+/* ---------- live calls (v7): a tab whose provider has a key calls the real API; others stay simulated ---------- */
+// Keys arrive from the workspace shell (Settings › API keys). They live in memory here and are sent only to each provider's own API.
+let KEYS = {};
+function keyFor(t) {
+  if (t.pid !== 'open') return KEYS[t.pid] || null;
+  const h = t.model.host || '';
+  return h.startsWith('localhost') ? KEYS.ollama || null : h.includes('groq') ? KEYS.groq || null : h.includes('openrouter') ? KEYS.openrouter || null : null;
+}
+function liveFor(t) { return F.liveCalls === 'auto' && !!keyFor(t); }
+const LIVE_SYS = 'You are one of several models answering the same prompt side by side in an evaluation harness. Answer directly and concisely. If the prompt asks for something runnable (a page, chart, calculator, map or game), include exactly one self-contained HTML file in a single ```html code block.';
+function splitArt(text) {
+  const m = text.match(/```html\s*\n([\s\S]*?)```/i);
+  if (!m) return { md: text.trim(), art: null };
+  return { md: text.replace(m[0], '').trim() || 'Artifact below.', art: m[1].trim() };
+}
+async function postJSON(url, headers, body, signal) {
+  let res;
+  try { res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), signal }); }
+  catch (e) { if (e.name === 'AbortError') throw e; throw new Error(`could not reach ${new URL(url).host}: the browser blocked the request (CORS or network), or this page's host does not allow outside connections. Open docs/mockup/index.html from your own computer and try again.`); }
+  const txt = await res.text(); let j = null; try { j = JSON.parse(txt); } catch (e) {}
+  if (!res.ok) { const er = j && (j.error || j); throw new Error(`${res.status} from ${new URL(url).host}: ${(er && (er.message || (typeof er === 'string' ? er : ''))) || txt.slice(0, 240)}`); }
+  return j;
+}
+let anthropicSdk = null;
+async function callAnthropic(t, prompt, signal) {
+  // Official TypeScript SDK, loaded as an ES module from jsDelivr; dangerouslyAllowBrowser because the key is the user's own, in their own browser.
+  if (!anthropicSdk) anthropicSdk = (await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm')).default;
+  const client = new anthropicSdk({ apiKey: KEYS.anthropic, dangerouslyAllowBrowser: true });
+  const m = t.model, params = { model: m.id, max_tokens: 16000, system: LIVE_SYS, messages: [{ role: 'user', content: prompt }] };
+  if (m.id === 'claude-haiku-4-5') {
+    if (t.reason && t.reason !== 'off') { const b = { '4k': 4096, '16k': 16384, '32k': 32768 }[t.reason] || 4096; params.thinking = { type: 'enabled', budget_tokens: b }; params.max_tokens = b + 8000; }
+  } else {
+    params.thinking = { type: 'adaptive', display: 'summarized' };
+    params.output_config = { effort: t.reason || 'medium' };
+    params.betas = ['server-side-fallback-2026-07-01']; params.fallbacks = 'default';   // a declined request is re-run on a fallback model in the same call
+  }
+  if (t.web) params.tools = [{ type: /haiku|fable/.test(m.id) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: 3 }];
+  let res;
+  try { res = await client.beta.messages.create(params, { signal }); }
+  catch (e) { if (e.name === 'AbortError') throw e; throw new Error(e.status ? `${e.status} from api.anthropic.com: ${e.message}` : `could not reach api.anthropic.com (${e.message}). Open docs/mockup/index.html from your own computer and try again.`); }
+  let text = '', thought = '', note = '';
+  res.content.forEach((b) => {
+    if (b.type === 'text') text += b.text;
+    else if (b.type === 'thinking') thought += (b.thinking || '') + '\n';
+    else if (b.type === 'fallback') note += `\n\n_${b.from.model} declined; ${b.to.model} answered._`;
+  });
+  if (res.stop_reason === 'refusal') note += `\n\n_The model declined${res.stop_details && res.stop_details.category ? ` (${res.stop_details.category})` : ''}._`;
+  if (res.stop_reason === 'max_tokens') note += '\n\n_Cut off at max_tokens._';
+  const u = res.usage || {};
+  return { text: text + note, thought: thought.trim(), inTok: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0), outTok: u.output_tokens || 0, thinkTok: 0, served: res.model };
+}
+async function callOpenAI(t, prompt, signal, noSummary) {
+  const body = { model: t.model.id, instructions: LIVE_SYS, input: prompt, max_output_tokens: 16000 };
+  if (t.reason) body.reasoning = noSummary ? { effort: t.reason } : { effort: t.reason, summary: 'auto' };
+  if (t.web) body.tools = [{ type: 'web_search' }];
+  let j;
+  try { j = await postJSON('https://api.openai.com/v1/responses', { authorization: `Bearer ${KEYS.openai}` }, body, signal); }
+  catch (e) { if (!noSummary && /summary|verif/i.test(e.message)) return callOpenAI(t, prompt, signal, true); throw e; }
+  let text = '', thought = '';
+  (j.output || []).forEach((o) => {
+    if (o.type === 'message') (o.content || []).forEach((c) => { if (c.type === 'output_text') text += c.text; });
+    if (o.type === 'reasoning') (o.summary || []).forEach((x) => { thought += (x.text || '') + '\n'; });
+  });
+  const u = j.usage || {};
+  return { text, thought: thought.trim(), inTok: u.input_tokens || 0, outTok: u.output_tokens || 0, thinkTok: (u.output_tokens_details || {}).reasoning_tokens || 0 };
+}
+async function callGemini(t, prompt, signal) {
+  const m = t.model, gc = {};
+  if (m.reason && m.reason.key === 'thinkingBudget') { const b = { dynamic: -1, off: 0, '1k': 1024, '8k': 8192, '24k': 24576, '32k': 32768 }[t.reason]; gc.thinkingConfig = { thinkingBudget: b == null ? -1 : b, includeThoughts: b !== 0 }; }
+  if (m.reason && m.reason.key === 'thinking_level') gc.thinkingConfig = { thinkingLevel: t.reason, includeThoughts: true };
+  const body = { systemInstruction: { parts: [{ text: LIVE_SYS }] }, contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: gc };
+  if (t.web) body.tools = [{ google_search: {} }];
+  const j = await postJSON(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m.id)}:generateContent`, { 'x-goog-api-key': KEYS.gemini }, body, signal);
+  const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+  const u = j.usageMetadata || {};
+  return { text: parts.filter((x) => !x.thought).map((x) => x.text || '').join(''), thought: parts.filter((x) => x.thought).map((x) => x.text || '').join('\n').trim(),
+    inTok: u.promptTokenCount || 0, outTok: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0), thinkTok: u.thoughtsTokenCount || 0 };
+}
+async function callChat(base, key, t, prompt, signal) {
+  const body = { model: t.model.id, messages: [{ role: 'system', content: LIVE_SYS }, { role: 'user', content: prompt }], max_tokens: 8000 };
+  const r = t.model.reason;
+  if (r && /reasoning_effort/.test(r.key || '') && t.reason) body.reasoning_effort = t.reason;
+  const j = await postJSON(base.replace(/\/$/, '') + '/chat/completions', key ? { authorization: `Bearer ${key}` } : {}, body, signal);
+  const msg = ((j.choices || [])[0] || {}).message || {};
+  let text = msg.content || '', thought = msg.reasoning || msg.reasoning_content || '';
+  const th = text.match(/<think>([\s\S]*?)<\/think>/);
+  if (th) { thought = thought || th[1].trim(); text = text.replace(th[0], '').trim(); }
+  const u = j.usage || {};
+  return { text, thought, inTok: u.prompt_tokens || 0, outTok: u.completion_tokens || 0, thinkTok: (u.completion_tokens_details || {}).reasoning_tokens || 0 };
+}
+function callProvider(t, prompt, signal) {
+  if (t.pid === 'anthropic') return callAnthropic(t, prompt, signal);
+  if (t.pid === 'openai') return callOpenAI(t, prompt, signal);
+  if (t.pid === 'gemini') return callGemini(t, prompt, signal);
+  if (t.pid === 'xai') return callChat('https://api.x.ai/v1', KEYS.xai, t, prompt, signal);
+  const h = t.model.host || '';
+  if (h.startsWith('localhost')) return callChat(KEYS.ollama, '', t, prompt, signal);
+  if (h.includes('groq')) return callChat('https://api.groq.com/openai/v1', KEYS.groq, t, prompt, signal);
+  return callChat('https://openrouter.ai/api/v1', KEYS.openrouter, t, prompt, signal);
+}
+async function runLive(t, r) {
+  const m = t.model, ctl = new AbortController(); r.abort = ctl;
+  try {
+    const out = await callProvider(t, r.prompt, ctl.signal);
+    if (r.state !== 'run') return;
+    const { md, art } = splitArt(out.text || '(the API returned no text)');
+    r.resp = { md, art, thought: out.thought || '' };
+    r.words = md.match(/\S+\s*/g) || [];
+    r.tokIn = out.inTok; r.tokThink = out.thinkTok; r.tokThinkCharged = out.thinkTok;
+    r.thinkMs = Date.now() - r.t0; r.phase = 'text';
+    if (r.el.thoughtBody) r.el.thoughtBody.textContent = r.resp.thought || '(the API returned no readable reasoning for this reply)';
+    if (r.el.thought) { r.el.thought.classList.remove('live'); r.el.thought.disabled = false; r.el.thought.setAttribute('aria-expanded', 'false'); setThoughtLabel(t, r); }
+    log(t, 'response', `${out.inTok} in · ${out.outTok} out${out.thinkTok ? ` (${out.thinkTok} reasoning)` : ''}${out.served && out.served !== m.id ? ` · served by ${out.served}` : ''}`);
+    charge(t, r, (out.inTok * m.in + out.outTok * m.out) / 1e6);
+    const textTok = Math.max(0, out.outTok - out.thinkTok);
+    r.pend.set(`${tabLabel(t)} is replying…`); refreshTab(t);
+    r.el.body.classList.add('cursor');
+    t.timer = setInterval(() => {   // reveal the real reply quickly so panes still read like a stream
+      if (r.state !== 'run') { clearInterval(t.timer); return; }
+      r.shown = Math.min(r.words.length, r.shown + 14);
+      r.tokOut = textTok * (r.shown / Math.max(1, r.words.length));
+      r.el.body.innerHTML = renderMd(r.words.slice(0, r.shown).join(''));
+      if (!st.tt) t.r.thread.scrollTop = t.r.thread.scrollHeight;
+      paintStats(t);
+      if (r.shown >= r.words.length) { clearInterval(t.timer); r.tokOut = textTok; r.t1 = Date.now(); finishRun(t, r); }
+    }, 30);
+  } catch (e) {
+    if (r.state !== 'run' || e.name === 'AbortError') return;
+    r.errMsg = e.message; log(t, 'error', e.message); stopRun(t, 'error');
+  }
+}
+
 /* ---------- runs ---------- */
 function send(text, instant = false) {
   if (st.tt) { toast('You are viewing a snapshot. Press Back to latest (or Esc) to send.'); return; }
@@ -2526,12 +2701,14 @@ function skipRun(t, run) {
 }
 function startRun(t, run, idx, instant) {
   const m = t.model, h = hash(run.prompt + m.id + run.no);
-  const think = willThink(t), mult = thinkMult(t);
-  const resp = makeReply(t, run.prompt);
+  const live = !instant && liveFor(t);
+  const think = live || willThink(t), mult = thinkMult(t);
+  const resp = live ? { md: '', thought: '' } : makeReply(t, run.prompt);
   const mcp = [...st.mcp];
   const r = { run, idx, prompt: run.prompt, t0: Date.now(), t1: 0, think, thinkMs: think ? jitter((m.think || 2000) * mult, h) : 0, resp, words: resp.md.match(/\S+\s*/g) || [], shown: 0,
     tokIn: estTok(run.prompt) + 38 + mcp.length * 220, tokOut: 0, tokThink: think ? Math.round(jitter((m.think || 2000) * mult, h >> 3) * 0.9) : 0, tokThinkCharged: 0, cost: 0, state: 'run', phase: think ? 'think' : 'text',
-    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/`, traceFrom: t.trace.length, userSeq: run.userSeq, replySeq: 0, final: null };
+    dir: `${run.dir}${pad(idx)}-${t.pid}-${m.id.replace(/[/:.]/g, '-')}/`, traceFrom: t.trace.length, userSeq: run.userSeq, replySeq: 0, final: null, live };
+  if (live) { r.tokIn = 0; r.tokThink = 0; r.thinkMs = 0; }
   run.tabs.push({ t, r });
   t.runs.push(r); t.cur = r;
   t.r.ptitle.textContent = run.prompt;
@@ -2543,7 +2720,7 @@ function startRun(t, run, idx, instant) {
   if (mcp.length) { const m0 = MCP_CATALOG.find((x) => x.name === mcp[0]); const tr = el('div', 'toolrow'); tr.innerHTML = `Called <b>${esc(m0.name)} › ${esc(m0.call)}</b> ${esc(m0.arg)}`; ai.appendChild(tr); }
   if (think) {
     const hidden = m.reason && m.reason.hiddenThinking;
-    const th = el('button', 'thought live'); th.type = 'button'; th.textContent = 'Thinking…';
+    const th = el('button', 'thought live'); th.type = 'button'; th.textContent = live ? `Calling ${m.host || t.p.endpoint.split('/')[0]}…` : 'Thinking…';
     const tb = el('div', 'thought-body' + (m.raw ? ' raw' : ''), m.raw ? `<think>\n${resp.thought}\n</think>` : resp.thought); tb.hidden = true;
     if (hidden) th.disabled = true;
     th.addEventListener('click', () => { if (r.phase === 'think' || hidden) return; tb.hidden = !tb.hidden; th.setAttribute('aria-expanded', String(!tb.hidden)); setThoughtLabel(t, r); });
@@ -2552,9 +2729,9 @@ function startRun(t, run, idx, instant) {
   ai.appendChild(r.el.body);
   t.r.thread.append(div, u, ai);
   t.status = 'run'; refreshTab(t);
-  log(t, 'request', `POST ${m.host || t.p.endpoint} · model ${m.id}${t.reason ? ` · ${m.reason.key || 'reasoning'} ${t.reason}` : ''}${t.web ? ' · web search' : ''}${mcp.length ? ` · MCP: ${mcp.join(', ')}` : ''}`);
+  log(t, 'request', `${live ? 'LIVE ' : ''}POST ${m.host || t.p.endpoint} · model ${m.id}${t.reason ? ` · ${m.reason.key || 'reasoning'} ${t.reason}` : ''}${t.web ? ' · web search' : ''}${mcp.length ? ` · MCP: ${mcp.join(', ')}` : ''}`);
   if (mcp.length) log(t, 'tool', `${mcp[0]} called by the model`);
-  r.pend = addPending(`${tabLabel(t)} is ${think ? 'thinking' : 'replying'}…`);
+  r.pend = addPending(`${tabLabel(t)} is ${live ? 'calling the API' : think ? 'thinking' : 'replying'}…`);
   charge(t, r, r.tokIn * m.in / 1e6);
   if (r.state !== 'run') return;
   if (instant) {
@@ -2563,6 +2740,7 @@ function startRun(t, run, idx, instant) {
     r.t1 = r.t0 + r.thinkMs + Math.round(r.words.length / m.wps * 1000);
     finishRun(t, r); return;
   }
+  if (live) { runLive(t, r); return; }
   if (think) t.timer = setTimeout(() => endThinking(t, r), r.thinkMs); else stream(t, r);
 }
 function setThoughtLabel(t, r) {
@@ -2653,17 +2831,18 @@ function finishRun(t, r) {
 function stopRun(t, why) {
   const r = t.cur; if (!r || r.state !== 'run') return;
   clearInterval(t.timer); clearTimeout(t.timer);
+  if (r.abort) r.abort.abort();
   r.state = 'stop'; r.t1 = Date.now();
   r.el.body.classList.remove('cursor');
-  if (r.el.thought && r.phase === 'think') { r.el.thought.classList.remove('live'); r.el.thought.textContent = 'Thinking stopped'; }
-  const reason = { cap: `Stopped by the spend cap (${usd(st.spend)} of ${usd(st.cap)}). The partial reply was saved. Free tabs keep running.`, user: 'Stopped from the harness. The partial reply was saved.', closed: 'Tab closed while replying. The partial reply was saved.' }[why];
+  if (r.el.thought && r.phase === 'think') { r.el.thought.classList.remove('live'); r.el.thought.textContent = why === 'error' ? 'No reply' : 'Thinking stopped'; }
+  const reason = { cap: `Stopped by the spend cap (${usd(st.spend)} of ${usd(st.cap)}). The partial reply was saved. Free tabs keep running.`, user: 'Stopped from the harness. The partial reply was saved.', closed: 'Tab closed while replying. The partial reply was saved.', error: `API call failed: ${r.errMsg}` }[why];
   r.el.ai.appendChild(el('div', 'notice', reason));
   log(t, 'stopped', reason);
   const partial = r.words.slice(0, r.shown).join('') || '(no text yet)';
   putFile(r.dir + 'response.md', partial);
   r.pend.li.remove();
   r.final = 'stop';
-  const c = addCommit({ kind: 'stop', run: r.run.no, title: `${tabLabel(t)} stopped on run ${r.run.no} (${why === 'cap' ? 'spend cap' : why}); the partial reply was saved`, short: `${tabLabel(t)} stopped · ${why === 'cap' ? 'spend cap' : why}`, files: [{ name: r.dir + 'response.md', before: null, after: partial }] });
+  const c = addCommit({ kind: 'stop', run: r.run.no, title: why === 'error' ? `${tabLabel(t)} failed on run ${r.run.no}: ${r.errMsg}` : `${tabLabel(t)} stopped on run ${r.run.no} (${why === 'cap' ? 'spend cap' : why}); the partial reply was saved`, short: `${tabLabel(t)} ${why === 'error' ? 'API error' : 'stopped · ' + (why === 'cap' ? 'spend cap' : why)}`, files: [{ name: r.dir + 'response.md', before: null, after: partial }] });
   r.replySeq = c.n; r.el.ai.dataset.seq = String(c.n);
   t.status = 'stop'; refreshTab(t);
   endOne(r.run);
@@ -2796,11 +2975,15 @@ window.addEventListener('message', (e) => {
   if (d.mai === 'cmd' && CMDS[d.name]) CMDS[d.name](d.arg);
   if (d.mai === 'flag' && FLAG_DEFS.some((x) => x.key === d.k && d.v in x.opts) && F[d.k] !== d.v) { F[d.k] = d.v; if (d.k === 'repoMode') paintDocked(); applyFlags(); }
   if (d.mai === 'chrome') { app.classList.toggle('embedded', !!d.embedded); if (F.repoMode === 'dock') placeDocked(); }
+  if (d.mai === 'keys') { KEYS = Object.assign({}, d.keys || {}); st.tabs.forEach((t) => refreshTab(t, true)); }
 });
 if (IN_SHELL) {
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && ['=', '+', '-', '0'].includes(e.key)) { e.preventDefault(); parent.postMessage({ mai: 'key', key: e.key, id: PROJ.id }, '*'); }
+    // Space held outside a text field pans the workspace canvas (prompt 0017).
+    if (e.code === 'Space' && F.spacePan === 'on' && !e.ctrlKey && !e.metaKey && !(e.target.closest && e.target.closest('input,textarea,select,[contenteditable]'))) { e.preventDefault(); if (!e.repeat) parent.postMessage({ mai: 'space', down: true, id: PROJ.id }, '*'); }
   }, true);
+  document.addEventListener('keyup', (e) => { if (e.code === 'Space') parent.postMessage({ mai: 'space', down: false, id: PROJ.id }, '*'); }, true);
   window.addEventListener('wheel', (e) => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); parent.postMessage({ mai: 'wheel', id: PROJ.id, x: e.clientX, y: e.clientY, dy: e.deltaY }, '*'); }, { passive: false });
   window.addEventListener('pointerdown', () => parent.postMessage({ mai: 'focus', id: PROJ.id }, '*'), true);
 }
@@ -2815,7 +2998,8 @@ function renderFlags() {
   wrap.appendChild(el('p', null, 'Every change from the latest round is a flag you can switch back here. Your choices stay in this browser. To make one the default for everyone, tell Claude the flag and value, for example "set changesView to detailed".'));
   wrap.appendChild(el('h4', null, 'Flags'));
   FLAG_DEFS.forEach((d, i) => {
-    if (d.v6 && !(FLAG_DEFS[i - 1] || {}).v6) { wrap.appendChild(el('h4', null, 'New in v6 (prompt 0016)')); if (!IN_SHELL) wrap.appendChild(el('p', null, 'Workspace and Menu bar apply to the canvas around projects, so they only change something when this project is open in the workspace.')); }
+    if (d.ver === 'v7' && (FLAG_DEFS[i - 1] || {}).ver !== 'v7') wrap.appendChild(el('h4', null, 'New in v7 (prompt 0017)'));
+    if (d.ver === 'v6' && (FLAG_DEFS[i - 1] || {}).ver !== 'v6') { wrap.appendChild(el('h4', null, 'New in v6 (prompt 0016)')); if (!IN_SHELL) wrap.appendChild(el('p', null, 'Workspace and Menu bar apply to the canvas around projects, so they only change something when this project is open in the workspace.')); }
     const row = el('div', 'flag' + (F[d.key] !== d.def ? ' changed' : ''));
     const name = el('span'); name.append(el('b', null, d.label + ' '), el('code', null, d.key));
     const sel = el('select'); sel.id = `flag-${d.key}`; sel.setAttribute('aria-label', d.label);
@@ -2860,6 +3044,7 @@ function applyFlags() {
   $('#artsBtn').hidden = F.artifactsWindow !== 'on';
   if (F.artifactsWindow !== 'on' && artsWin && artsWin.state === 'open') setWinState(artsWin, 'closed');
   paintDocked(); renderCommits(); renderWorking(); paintSuggest(); paintHint(); renderFlags(); renderTimeline();
+  st.tabs.forEach((t) => refreshTab(t, true));
 }
 window.mai = { flags: F, setFlag, elements: ELEMENTS, versions: HISTORY, story: PROJ.story, cmd: (n, a) => CMDS[n] && CMDS[n](a), state: () => ({ runs: st.exp ? st.exp.runs.length : 0, steps: st.cseq, checks: st.checks, suggestion: st.suggestion, tt: st.tt }) };
 
@@ -2896,7 +3081,7 @@ const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
 const MOD = IS_MAC ? '⌘' : 'Ctrl';
 
 /* ---------- flags shared with every project (same localStorage key the projects use) ---------- */
-const DEF = { workspace: 'canvas', menuBar: 'menus', timeline: 'on', ttScroll: 'bottom', debugIds: 'off', repoMode: 'float', artifactsWindow: 'on' };
+const DEF = { workspace: 'canvas', menuBar: 'menus', timeline: 'on', ttScroll: 'bottom', debugIds: 'off', repoMode: 'float', artifactsWindow: 'on', titleDblClick: 'maximize', spacePan: 'on', liveCalls: 'auto' };
 const F = Object.assign({}, DEF);
 try { Object.assign(F, JSON.parse(localStorage.getItem('mai-flags') || '{}')); } catch (e) {}
 function saveFlag(k, v) { F[k] = v; try { const all = JSON.parse(localStorage.getItem('mai-flags') || '{}'); all[k] = v; localStorage.setItem('mai-flags', JSON.stringify(all)); } catch (e) {} }
@@ -2923,19 +3108,20 @@ function addProject(o, quiet) {
   w.innerHTML = `<header class="pw-bar" data-dbg="project-titlebar"><div class="lights"><button class="light close" type="button" data-glyph="×"></button><button class="light min" type="button" data-glyph="–"></button><button class="light max" type="button" data-glyph="+"></button></div><span class="pw-title"></span><span class="pill" data-dbg="project-status" data-s="idle">starting</span><span class="pw-meta"></span><button class="pw-focus" type="button">Focus</button></header><div class="pw-body"><iframe></iframe><div class="pw-shield" title="Click to zoom to this project"></div></div><div class="pw-resize" title="Drag to resize"></div>`;
   p.el = w; p.bar = $('.pw-bar', w); p.pill = $('.pill', w); p.meta = $('.pw-meta', w); p.frame = $('iframe', w);
   $('.pw-title', w).textContent = p.title;
-  $('.light.close', w).setAttribute('aria-label', `Close ${p.title}`); $('.light.min', w).setAttribute('aria-label', `Collapse ${p.title}`); $('.light.max', w).setAttribute('aria-label', `Focus ${p.title}`);
+  $('.light.close', w).setAttribute('aria-label', `Close ${p.title}`); $('.light.min', w).setAttribute('aria-label', `Collapse ${p.title}`); $('.light.max', w).setAttribute('aria-label', `Maximize or restore ${p.title}`);
   p.frame.name = `proj-${p.id}`; p.frame.title = `Project: ${p.title}`;
   p.frame.srcdoc = srcdoc({ id: p.id, story: p.story, start: p.start || 'full', embedded: embedded(), title: p.title, repo: p.repo || 'open' });
+  p.frame.addEventListener('load', () => p.frame.contentWindow.postMessage({ mai: 'keys', keys: KEYS }, '*'));
   world.appendChild(w); P.push(p); place(p);
   $('.light.close', w).addEventListener('click', () => closeProject(p));
   $('.light.min', w).addEventListener('click', () => { w.classList.toggle('collapsed'); });
-  $('.light.max', w).addEventListener('click', () => focusProject(p, true));
+  $('.light.max', w).addEventListener('click', () => toggleMax(p));
   $('.pw-focus', w).addEventListener('click', () => focusProject(p, true));
   $('.pw-shield', w).addEventListener('click', () => focusProject(p, true));
   w.addEventListener('pointerdown', () => setCurrent(p), true);
-  dragger(p.bar, (dx, dy) => { p.x += dx / view.z; p.y += dy / view.z; place(p); }, (e) => !e.target.closest('button'));
+  dragger(p.bar, (dx, dy) => { p.x += dx / view.z; p.y += dy / view.z; place(p); }, (e) => !e.target.closest('button') && !p.maxed);
   dragger($('.pw-resize', w), (dx, dy) => { p.w = Math.max(760, p.w + dx / view.z); p.h = Math.max(480, p.h + dy / view.z); place(p); });
-  p.bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) focusProject(p, true); });
+  p.bar.addEventListener('dblclick', (e) => { if (e.target.closest('button')) return; if (F.titleDblClick === 'focus') focusProject(p, true); else toggleMax(p); });
   if (!quiet) { setCurrent(p); focusProject(p, true); }
   paintWindows();
   return p;
@@ -2955,16 +3141,23 @@ function reopen(p) { p.state = 'open'; p.el.hidden = false; setCurrent(p); focus
 function cmd(name, arg, p = cur) { if (p) p.frame.contentWindow.postMessage({ mai: 'cmd', name, arg }, '*'); else toast('Open a project first.'); }
 function broadcast(msg, except) { P.forEach((p) => { if (p !== except) p.frame.contentWindow.postMessage(msg, '*'); }); }
 
-/* ---------- canvas: pan and zoom ---------- */
+/* ---------- canvas: pan and zoom (v7: at most one paint per animation frame; the dot grid is its own layer, so panning no longer repaints the whole canvas background) ---------- */
 const view = { x: 40, y: 40, z: 0.5 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-function applyView(anim) {
-  world.style.transition = anim ? 'transform .35s ease' : 'none';
-  world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.z})`;
-  const g = 24 * view.z;
-  canvas.style.backgroundSize = `${g}px ${g}px`; canvas.style.backgroundPosition = `${view.x}px ${view.y}px`;
+const grid = $('#grid');
+let raf = 0, moveT = 0;
+function paintView(anim) {
+  ws.classList.add('moving'); clearTimeout(moveT); moveT = setTimeout(() => ws.classList.remove('moving'), anim ? 240 : 120);
+  world.style.transition = anim ? 'transform .18s cubic-bezier(.2,.7,.2,1)' : 'none';
+  world.style.transform = `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.z})`;
+  const g = 24 * view.z, m = (v) => ((v % g) + g) % g;
+  grid.style.backgroundSize = `${g}px ${g}px`; grid.style.transform = `translate3d(${m(view.x)}px, ${m(view.y)}px, 0)`;
   $('#zPct').textContent = Math.round(view.z * 100) + '%';
   ws.classList.toggle('far', view.z < 0.3);
+}
+function applyView(anim) {
+  if (anim) { cancelAnimationFrame(raf); raf = 0; paintView(true); return; }
+  if (!raf) raf = requestAnimationFrame(() => { raf = 0; paintView(false); });
 }
 function zoomAt(sx, sy, factor, anim) {
   const z2 = clamp(view.z * factor, 0.1, 1.6), wx = (sx - view.x) / view.z, wy = (sy - view.y) / view.z;
@@ -2984,37 +3177,66 @@ function fit(r, anim, maxZ = 1) {
   view.x = (cw - r.w * view.z) / 2 - r.x * view.z; view.y = (ch - 30 - r.h * view.z) / 2 - r.y * view.z;
   applyView(anim);
 }
-function fitAll(anim = true) { fit(bounds(), anim); }
+function fitAll(anim = true) { const m = P.find((p) => p.maxed); if (m) toggleMax(m); fit(bounds(), anim); }
 function focusProject(p, anim) {
   if (!p) return;
   if (p.state !== 'open') { reopen(p); return; }
   p.el.classList.remove('collapsed'); setCurrent(p);
-  if (F.workspace === 'single') return;
+  if (F.workspace === 'single' || p.maxed) return;
   fit({ x: p.x, y: p.y, w: p.w, h: p.h }, anim);
 }
+// Owner request (prompt 0017): double-click a title bar to give that project the whole screen; again to put it back.
+function toggleMax(p) {
+  if (!p || F.workspace === 'single') return;
+  if (p.maxed) {
+    Object.assign(p, p.maxed.geom); Object.assign(view, p.maxed.view); p.maxed = null;
+    p.el.classList.remove('maxed'); ws.classList.remove('has-max'); place(p); applyView(true);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    return;
+  }
+  P.forEach((q) => { if (q.maxed && q !== p) toggleMax(q); });
+  p.maxed = { geom: { x: p.x, y: p.y, w: p.w, h: p.h }, view: { ...view } };
+  p.el.classList.remove('collapsed'); p.el.classList.add('maxed'); ws.classList.add('has-max'); setCurrent(p);
+  fillMax(p, true);
+  if (document.fullscreenEnabled && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+}
+function fillMax(p, anim) { p.w = canvas.clientWidth; p.h = canvas.clientHeight; place(p); view.z = 1; view.x = -p.x; view.y = -p.y; applyView(anim); }
+new ResizeObserver(() => { const m = P.find((p) => p.maxed); if (m) fillMax(m, false); }).observe(canvas);
 function dragger(handle, move, ok = () => true) {
   let last = null;
-  handle.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !ok(e) || F.workspace === 'single') return; last = { x: e.clientX, y: e.clientY }; handle.setPointerCapture(e.pointerId); ws.classList.add('dragging'); e.preventDefault(); e.stopPropagation(); });
+  handle.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !ok(e) || F.workspace === 'single') return; last = { x: e.clientX, y: e.clientY }; handle.setPointerCapture(e.pointerId); ws.classList.add('dragging'); noSelect(); e.preventDefault(); e.stopPropagation(); });
   handle.addEventListener('pointermove', (e) => { if (!last) return; move(e.clientX - last.x, e.clientY - last.y); last = { x: e.clientX, y: e.clientY }; });
   const end = () => { last = null; ws.classList.remove('dragging'); };
-  handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
+  handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end); handle.addEventListener('lostpointercapture', end);
 }
+// B-30: a drag that starts on the canvas must never select the project iframes (they showed up highlighted).
+function noSelect() { try { const s = getSelection(); if (s && s.rangeCount) s.removeAllRanges(); } catch (e) {} }
+const editable = (n) => !!(n && n.closest && n.closest('input,textarea,select,[contenteditable=""],[contenteditable="true"]'));
+let spaceDown = false;
+function setSpace(v) { spaceDown = !!v && F.spacePan === 'on' && F.workspace !== 'single'; ws.classList.toggle('space', spaceDown); }
 (() => {
   let pan = null;
+  const startPan = (e, el) => { pan = { x: e.clientX, y: e.clientY, el }; el.setPointerCapture(e.pointerId); ws.classList.add('dragging', 'panning'); noSelect(); closeMenus(); e.preventDefault(); };
+  const movePan = (e) => { if (!pan) return; view.x += e.clientX - pan.x; view.y += e.clientY - pan.y; pan.x = e.clientX; pan.y = e.clientY; applyView(); };
+  const end = () => { pan = null; ws.classList.remove('dragging', 'panning'); };
   canvas.addEventListener('pointerdown', (e) => {
-    if (F.workspace === 'single' || e.button !== 0 || !(e.target === canvas || e.target === world)) return;
-    pan = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('panning'); ws.classList.add('dragging'); closeMenus();
+    if (F.workspace === 'single' || e.button > 1) return;
+    const bg = e.target === canvas || e.target === world || e.target === grid || e.target.id === 'panShield';
+    if (bg || e.button === 1) startPan(e, canvas);   // empty canvas, the space-bar shield, or the middle mouse button
   });
-  canvas.addEventListener('pointermove', (e) => { if (!pan) return; view.x += e.clientX - pan.x; view.y += e.clientY - pan.y; pan = { x: e.clientX, y: e.clientY }; applyView(); });
-  const end = () => { pan = null; canvas.classList.remove('panning'); ws.classList.remove('dragging'); };
-  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointermove', movePan);
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end); canvas.addEventListener('lostpointercapture', end);
   canvas.addEventListener('wheel', (e) => {
     if (F.workspace === 'single') return;
     e.preventDefault();
-    const r = canvas.getBoundingClientRect();
-    if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0022));
-    else { view.x -= e.deltaX; view.y -= e.deltaY; applyView(); }
+    const r = canvas.getBoundingClientRect(), k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? canvas.clientHeight : 1;
+    if (e.ctrlKey || e.metaKey) zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * k * 0.003));
+    else { view.x -= (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * k; view.y -= (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * k; applyView(); }
   }, { passive: false });
+  // Space held anywhere (shell or a project) shows a shield over the projects: drag pans, scroll pans, ⌘/Ctrl + scroll zooms.
+  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !editable(e.target) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!e.repeat) setSpace(true); } });
+  document.addEventListener('keyup', (e) => { if (e.code === 'Space') setSpace(false); });
+  window.addEventListener('blur', () => { if (!document.hasFocus()) setTimeout(() => { if (!document.activeElement || document.activeElement.tagName !== 'IFRAME') setSpace(false); }, 0); });
 })();
 $('#zIn').addEventListener('click', () => zoomCenter(1.25));
 $('#zOut').addEventListener('click', () => zoomCenter(0.8));
@@ -3023,7 +3245,7 @@ $('#zPct').addEventListener('click', () => { if (!cur) return; const cw = canvas
 function key(k) { if (k === '=' || k === '+') zoomCenter(1.25); else if (k === '-') zoomCenter(0.8); else if (k === '0') fitAll(); else if (k === '1') focusProject(cur, true); }
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && ['=', '+', '-', '0', '1'].includes(e.key)) { e.preventDefault(); key(e.key); }
-  if (e.key === 'Escape') { closeMenus(); const s = $('.wsheet'); if (s) s.remove(); }
+  if (e.key === 'Escape') { closeMenus(); const s = $('.wsheet'); if (s) s.remove(); else { const m = P.find((q) => q.maxed); if (m && !document.fullscreenElement) toggleMax(m); } }
 });
 // B-26: scrollIntoView inside a project also scrolls ancestors; keep the canvas and shell pinned.
 [canvas, ws, document.scrollingElement].forEach((n) => n && n.addEventListener('scroll', () => { n.scrollLeft = 0; n.scrollTop = 0; }));
@@ -3044,6 +3266,7 @@ window.addEventListener('message', (e) => {
   if (d.mai === 'flag') { saveFlag(d.k, d.v); broadcast({ mai: 'flag', k: d.k, v: d.v }, p); applyShellFlags(); }
   if (d.mai === 'key') { setCurrent(p); key(d.key); }
   if (d.mai === 'focus') { setCurrent(p); closeMenus(); }
+  if (d.mai === 'space') setSpace(d.down);
   if (d.mai === 'wheel' && F.workspace !== 'single') {
     const r = canvas.getBoundingClientRect(), b = p.frame.getBoundingClientRect();
     zoomAt(b.left - r.left + d.x * view.z, b.top - r.top + d.y * view.z, Math.exp(-d.dy * 0.0022));
@@ -3054,6 +3277,13 @@ window.addEventListener('message', (e) => {
 function flagItem(label, k, on, off) { return { l: label, check: F[k] === on, run: () => setShellFlag(k, F[k] === on ? off : on) }; }
 function setShellFlag(k, v) { saveFlag(k, v); broadcast({ mai: 'flag', k, v }); applyShellFlags(); }
 const MENUS = [
+  ['app', '◆ multi-ai', () => [
+    { l: 'API keys & models…', run: openKeys },
+    { l: 'Flags & element names…', run: () => cmd('flags') },
+    '-',
+    { l: "What's new", run: showNew },
+    { l: 'Keyboard and mouse', run: showKeys },
+  ]],
   ['file', 'File', () => [
     { l: 'New blank project', run: () => addProject({ story: 'blank', title: `Untitled experiment ${nextId}` }) },
     { l: 'New from example: Land or Water? (guided, from step 1)', run: () => addProject({ story: 'landwater', start: 'step1', title: 'Land or Water? · guided from step 1' }) },
@@ -3079,6 +3309,7 @@ const MENUS = [
     { l: 'Zoom out', k: `${MOD} −`, run: () => zoomCenter(0.8) },
     { l: 'Zoom to fit all projects', k: `${MOD} 0`, run: () => fitAll() },
     { l: 'Focus current project', k: `${MOD} 1`, dis: !cur, run: () => focusProject(cur, true) },
+    { l: cur && cur.maxed ? 'Restore project size' : 'Maximize current project', k: 'dbl-click title', dis: !cur || F.workspace === 'single', run: () => toggleMax(cur) },
     '-',
     { l: 'Projects on a canvas', check: F.workspace === 'canvas', run: () => setShellFlag('workspace', 'canvas') },
     { l: 'One project fills the screen (v5)', check: F.workspace === 'single', run: () => setShellFlag('workspace', 'single') },
@@ -3086,6 +3317,7 @@ const MENUS = [
     flagItem('Timeline ribbon', 'timeline', 'on', 'off'),
     flagItem('Panes scroll to latest in playback', 'ttScroll', 'bottom', 'keep'),
     flagItem('Element names overlay', 'debugIds', 'on', 'off'),
+    flagItem('Space + drag pans the canvas', 'spacePan', 'on', 'off'),
     '-',
     { l: 'Repo window', run: () => cmd('repo') },
     { l: 'Dock or float the repo window', run: () => cmd('dock') },
@@ -3098,6 +3330,8 @@ const MENUS = [
     { l: 'Stop all', dis: !(cur && cur.s.status === 'running'), run: () => cmd('stop') },
     { l: 'New variant tab…', run: () => cmd('newTab') },
     { l: 'MCP & tools…', run: () => cmd('mcp') },
+    { l: 'API keys (real calls)…', run: openKeys },
+    flagItem('Tabs with a key call the real API', 'liveCalls', 'auto', 'off'),
     '-',
     { l: 'Step back in time', run: () => cmd('ttPrev') },
     { l: 'Step forward', run: () => cmd('ttNext') },
@@ -3117,7 +3351,8 @@ const MENUS = [
   ['help', 'Help', () => [
     { l: 'Flags & element names…', run: () => cmd('flags') },
     { l: 'Keyboard and mouse', run: showKeys },
-    { l: "What's new in v6", run: showNew },
+    { l: 'API keys & models…', run: openKeys },
+    { l: "What's new", run: showNew },
   ]],
 ];
 let openMenu = null;
@@ -3144,7 +3379,7 @@ function showMenu(btn, def) {
   const first = pop.querySelector('button:not(:disabled)'); if (first) first.focus({ preventScroll: true });
 }
 MENUS.forEach((def) => {
-  const b = el('button', 'mtop', def[1]); b.type = 'button'; b.dataset.m = def[0]; b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false');
+  const b = el('button', 'mtop' + (def[0] === 'app' ? ' logo' : ''), def[1]); b.type = 'button'; b.dataset.m = def[0]; if (def[0] === 'app') b.dataset.dbg = 'app-menu'; b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false');
   b.addEventListener('click', (e) => { e.stopPropagation(); if (openMenu && openMenu.btn === b) closeMenus(); else showMenu(b, def); });
   b.addEventListener('pointerenter', () => { if (openMenu && openMenu.btn !== b) showMenu(b, def); });
   $('#menus').appendChild(b);
@@ -3196,15 +3431,19 @@ function sheet(title, html) {
 }
 function showKeys() {
   sheet('Keyboard and mouse', `<table>
-<tr><td>drag empty canvas</td><td>Pan</td></tr><tr><td>scroll / two fingers</td><td>Pan (over empty canvas)</td></tr>
+<tr><td>drag empty canvas</td><td>Pan</td></tr><tr><td>Space + drag</td><td>Pan from anywhere, also over a project</td></tr><tr><td>Space + scroll</td><td>Pan instead of scrolling the project under the pointer</td></tr><tr><td>middle-button drag</td><td>Pan</td></tr><tr><td>scroll / two fingers</td><td>Pan (over empty canvas)</td></tr>
 <tr><td>${MOD} + scroll, pinch</td><td>Zoom at the pointer, also over a project</td></tr>
 <tr><td>${MOD} + / ${MOD} −</td><td>Zoom in / out</td></tr><tr><td>${MOD} 0</td><td>Fit every project</td></tr><tr><td>${MOD} 1</td><td>Focus the current project</td></tr>
-<tr><td>drag a title bar</td><td>Move a project; the corner resizes it</td></tr><tr><td>double-click a title bar</td><td>Focus that project</td></tr>
+<tr><td>drag a title bar</td><td>Move a project; the corner resizes it</td></tr><tr><td>double-click a title bar</td><td>Maximize the project to the whole screen; again (or Esc) to restore</td></tr>
 <tr><td>${MOD} Enter</td><td>Send the prompt to every tab (inside a project)</td></tr><tr><td>↑ ↓ in the prompt bar</td><td>Earlier prompts, then the suggestion</td></tr>
 <tr><td>Esc</td><td>Close menus; leave playback</td></tr></table>`);
 }
 function showNew() {
-  sheet("What's new in v6", `<ul>
+  sheet("What's new", `<p><b>v7</b></p><ul>
+<li><b>Snappier canvas</b>: one paint per frame and a GPU layer while moving. <b>Space + drag</b> or <b>Space + scroll</b> pans from anywhere, even over a project; the middle mouse button pans too. Dragging no longer selects the projects.</li>
+<li><b>Double-click a title bar</b> (or the green light) to give that project the whole screen, and go full screen when the browser allows it. Double-click again or press Esc to restore.</li>
+<li><b>API keys</b> (menu bar): add a key and that provider's tabs call the real API on the next Send, using each tab's model, effort and web search. Tabs without a key stay simulated.</li></ul>
+<p><b>v6</b></p><ul>
 <li><b>Project windows</b> on an infinite canvas: each holds the master prompt, variant tabs, artifacts and its own repo. Pan, zoom, move and resize them; the menu bar counts the projects that need you.</li>
 <li><b>File, Edit, View, Project, Window, Help</b> menus act on the current project (blue ring).</li>
 <li><b>Land or Water?</b>: Karpathy's eval recreated in three steps, the last two the orchestrator's suggestions. The maps are simulated answers scored against a real land mask (Natural Earth, 16,200 points, always-Water baseline 71.1%).</li>
@@ -3214,6 +3453,103 @@ function showNew() {
 <li>Playback scrolls every pane to its latest reply.</li></ul>
 <p>Every change is a flag (Help › Flags) with the v5 behaviour as the other option.</p>`);
 }
+
+/* ---------- API keys (v7) ---------- */
+// Keys stay in this browser: in memory, or in localStorage when "Remember" is on. They go to projects by postMessage and,
+// from there, only to each provider's own API. They are never written into a project's repo, exports or ledger.
+const KEY_PROVIDERS = [
+  { id: 'anthropic', name: 'Anthropic · Claude', tabs: 'Claude tabs: Opus 5.5, Sonnet 5.5, Fable 5.1, Haiku 4.5', ph: 'sk-ant-…', url: 'https://console.anthropic.com/settings/keys',
+    how: 'Sign in to the Claude Console → Settings → API keys → Create key. Add prepaid credits under Billing first (a few dollars is plenty for testing). Opus 5.5 costs $4 / $20 per million tokens in / out.',
+    test: (k) => ({ url: 'https://api.anthropic.com/v1/models?limit=1', headers: { 'x-api-key': k, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } }) },
+  { id: 'openai', name: 'OpenAI', tabs: 'OpenAI tabs: GPT-5, GPT-5 mini, GPT-5 nano', ph: 'sk-…', url: 'https://platform.openai.com/api-keys',
+    how: 'platform.openai.com → API keys → Create new secret key. Add credits under Settings → Billing. Some models only return reasoning summaries after organization verification; the harness then retries without them.',
+    test: (k) => ({ url: 'https://api.openai.com/v1/models', headers: { authorization: `Bearer ${k}` } }) },
+  { id: 'gemini', name: 'Google · Gemini', tabs: 'Gemini tabs: 2.5 Flash, 2.5 Pro, 3 Pro', ph: 'AIza…', url: 'https://aistudio.google.com/apikey',
+    how: 'Google AI Studio → Get API key → Create API key. The free tier needs no card but is rate-limited, and free-tier prompts may be used to improve Google products.',
+    test: (k) => ({ url: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', headers: { 'x-goog-api-key': k } }) },
+  { id: 'xai', name: 'xAI · Grok', tabs: 'Grok tabs: grok-4, grok-4-fast, grok-3-mini', ph: 'xai-…', url: 'https://console.x.ai',
+    how: 'console.x.ai → API Keys → Create API key, then buy a small amount of credits. If the browser blocks the call (CORS), test Grok through the server instead.',
+    test: (k) => ({ url: 'https://api.x.ai/v1/models', headers: { authorization: `Bearer ${k}` } }) },
+  { id: 'groq', name: 'Groq', tabs: 'Open models tab: gpt-oss-120b · Groq', ph: 'gsk_…', url: 'https://console.groq.com/keys',
+    how: 'console.groq.com → API Keys → Create API Key. Free tier with rate limits; fast open models.',
+    test: (k) => ({ url: 'https://api.groq.com/openai/v1/models', headers: { authorization: `Bearer ${k}` } }) },
+  { id: 'openrouter', name: 'OpenRouter', tabs: 'Open models tab: Llama 4 Maverick, Kimi K2 (one key, many models)', ph: 'sk-or-…', url: 'https://openrouter.ai/settings/keys',
+    how: 'openrouter.ai → Settings → API Keys → Create key. Pay as you go; models whose id ends in :free cost nothing but are rate-limited.',
+    test: (k) => ({ url: 'https://openrouter.ai/api/v1/key', headers: { authorization: `Bearer ${k}` } }) },
+  { id: 'ollama', name: 'Ollama · local, free', tabs: 'Open models tab: qwen3:8b, gpt-oss:20b, deepseek-r1:8b', ph: 'http://localhost:11434/v1', url: 'https://ollama.com/download', base: true,
+    how: 'Install Ollama, run "ollama pull qwen3:8b", then start it so a web page may call it: OLLAMA_ORIGINS="*" ollama serve. No key; paste the base URL to turn it on. Runs on your machine at $0, so the spend cap never blocks it.',
+    test: (k) => ({ url: k.replace(/\/v1\/?$/, '') + '/api/tags', headers: {} }) },
+];
+let KEYS = {}, rememberKeys = false;
+try { const s0 = JSON.parse(localStorage.getItem('mai-keys') || 'null'); if (s0 && typeof s0 === 'object') { KEYS = s0; rememberKeys = true; } } catch (e) {}
+function keysChanged() {
+  try { if (rememberKeys) localStorage.setItem('mai-keys', JSON.stringify(KEYS)); else localStorage.removeItem('mai-keys'); } catch (e) {}
+  broadcast({ mai: 'keys', keys: KEYS }); paintKeysBtn();
+}
+function paintKeysBtn() {
+  const n = KEY_PROVIDERS.filter((k) => KEYS[k.id]).length, b = $('#keysBtn');
+  b.textContent = n ? `API keys · ${n} live` : 'API keys'; b.classList.toggle('on', n > 0);
+  b.title = n ? `Connected: ${KEY_PROVIDERS.filter((k) => KEYS[k.id]).map((k) => k.name).join(', ')}. Tabs for these call the real API.` : 'Add API keys to make tabs call the real models. Until then every reply is simulated.';
+}
+let shellSdk = null;
+async function testKey(def, key) {
+  if (def.id === 'anthropic') {   // official SDK, same as the Claude tabs use
+    try {
+      if (!shellSdk) shellSdk = (await import('https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm')).default;
+      await new shellSdk({ apiKey: key, dangerouslyAllowBrowser: true }).models.list({ limit: 1 });
+      return { ok: true, msg: 'Works' };
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) return { ok: false, msg: `${e.status}: the key was refused. Check it was copied whole.` };
+      return { ok: false, msg: e.status ? `${e.status}: ${e.message}` : 'Could not reach api.anthropic.com (or load the SDK). This page\'s host may block outside connections; open docs/mockup/index.html from your own computer and test again.' };
+    }
+  }
+  const { url, headers } = def.test(key);
+  let res;
+  try { res = await fetch(url, { headers }); } catch (e) { return { ok: false, msg: `Could not reach ${new URL(url).host}. Your browser or this page's host blocked the request${def.base ? '; is Ollama running with OLLAMA_ORIGINS="*"?' : '. Open docs/mockup/index.html from your own computer and test again.'}` }; }
+  if (res.ok) {
+    let extra = '';
+    try { const j = await res.json(); if (def.base && j.models) extra = ` · ${j.models.length} local model${j.models.length === 1 ? '' : 's'}: ${j.models.slice(0, 4).map((m) => m.name).join(', ')}`; } catch (e) {}
+    return { ok: true, msg: `Works${extra}` };
+  }
+  return { ok: false, msg: res.status === 401 || res.status === 403 ? `${res.status}: the key was refused. Check it was copied whole.` : `${res.status} from ${new URL(url).host}` };
+}
+function openKeys() {
+  const old = $('.wsheet'); if (old) old.remove();
+  const o = el('div', 'wsheet'), box = el('div', 'keys'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'keysTitle'); box.dataset.dbg = 'api-keys-window';
+  box.innerHTML = `<h2 id="keysTitle">API keys &amp; models</h2>
+<p class="lead">Add a key and the tabs for that provider call the real API on your next Send; tabs without a key stay simulated. Each tab's model, effort or thinking setting and web search come from its composer. The spend cap still applies to paid tabs.</p>
+<p class="warn">Keys stay in this browser and go only to each provider's API, straight from this page. They are never written into a project's repo or exports. The page published on claude.ai may block outside connections; if a test says so, open <code>docs/mockup/index.html</code> from your own computer.</p>`;
+  const list = el('div', 'klist');
+  KEY_PROVIDERS.forEach((def) => {
+    const card = el('section', 'kcard' + (KEYS[def.id] ? ' on' : ''));
+    const head = el('div', 'khead'); head.append(el('b', null, def.name), el('span', 'kstate', KEYS[def.id] ? 'live' : 'simulated'));
+    const a = el('a', null, def.base ? 'Download Ollama' : 'Get a key'); a.href = def.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; head.appendChild(a);
+    const row = el('div', 'krow');
+    const inp = el('input'); inp.type = def.base ? 'text' : 'password'; inp.placeholder = def.ph; inp.autocomplete = 'off'; inp.spellcheck = false; inp.value = KEYS[def.id] || ''; inp.setAttribute('aria-label', `${def.name} ${def.base ? 'base URL' : 'API key'}`);
+    const save = el('button', 'primary', 'Save'), test = el('button', null, 'Test'), clear = el('button', null, 'Clear');
+    [save, test, clear].forEach((b) => { b.type = 'button'; });
+    const out = el('div', 'kout');
+    save.addEventListener('click', () => { const v = inp.value.trim(); if (v) KEYS[def.id] = v; else delete KEYS[def.id]; keysChanged(); card.classList.toggle('on', !!v); head.querySelector('.kstate').textContent = v ? 'live' : 'simulated'; out.textContent = v ? 'Saved. Tabs for this provider now call the real API.' : 'Cleared.'; out.className = 'kout'; });
+    clear.addEventListener('click', () => { inp.value = ''; save.click(); });
+    test.addEventListener('click', async () => { const v = inp.value.trim(); if (!v) { out.textContent = 'Paste a key first.'; return; } out.textContent = 'Testing…'; out.className = 'kout'; const r = await testKey(def, v); out.textContent = r.msg; out.className = 'kout ' + (r.ok ? 'ok' : 'bad'); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); });
+    row.append(inp, save, test, clear);
+    card.append(head, el('small', 'ktabs', def.tabs), el('p', 'khow', def.how), row, out);
+    list.appendChild(card);
+  });
+  box.appendChild(list);
+  const foot = el('div', 'kfoot');
+  const lab = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = rememberKeys;
+  cb.addEventListener('change', () => { rememberKeys = cb.checked; keysChanged(); });
+  lab.append(cb, document.createTextNode(' Remember keys in this browser (localStorage). Off: they are forgotten when the page closes.'));
+  const close = el('button', 'primary', 'Done'); close.type = 'button';
+  foot.append(lab, close); box.appendChild(foot);
+  o.appendChild(box); ws.appendChild(o);
+  const done = () => o.remove();
+  close.addEventListener('click', done); o.addEventListener('click', (e) => { if (e.target === o) done(); });
+  const first = box.querySelector('input'); if (first) first.focus();
+}
+$('#keysBtn').addEventListener('click', openKeys);
 
 /* ---------- workspace flags ---------- */
 function paintSingle() {
@@ -3233,8 +3569,8 @@ tick(); setInterval(tick, 20000);
 
 SEED.forEach((o) => addProject(o, true));
 setCurrent(P[0]);
-applyShellFlags();
+applyShellFlags(); paintKeysBtn();
 if (canvas.clientWidth < 720) focusProject(P[0]); else fitAll(false);
-window.maiShell = { projects: () => P.map((p) => ({ id: p.id, title: p.title, state: p.state, status: p.s.status })), view, fitAll, focus: (id) => focusProject(P.find((p) => p.id === id), false), cmd: (name, arg, id) => cmd(name, arg, id ? P.find((p) => p.id === id) : cur), setFlag: setShellFlag, flags: F };
+window.maiShell = { projects: () => P.map((p) => ({ id: p.id, title: p.title, state: p.state, status: p.s.status })), view, fitAll, focus: (id) => focusProject(P.find((p) => p.id === id), false), cmd: (name, arg, id) => cmd(name, arg, id ? P.find((p) => p.id === id) : cur), setFlag: setShellFlag, flags: F, setKeys: (k) => { KEYS = Object.assign({}, k); keysChanged(); }, maximize: (id) => toggleMax(P.find((p) => p.id === id)), openKeys };
 })();
 </script>
