@@ -15,6 +15,8 @@ const page = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)
 const failures = [];
 const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (!ok) failures.push(msg); };
 const trap = () => { window.__errs = []; window.addEventListener('error', (e) => window.__errs.push(e.message)); };
+// The canvas seed is a flag: 'evals' (Land or Water? + pass@k) or 'screening' (the default on the screening branch).
+const seed = (name) => { try { const f = JSON.parse(localStorage.getItem('mai-flags') || '{}'); if (window === window.top && !sessionStorage.getItem('seeded')) { f.seed = name; localStorage.setItem('mai-flags', JSON.stringify(f)); sessionStorage.setItem('seeded', '1'); } } catch (e) {} };
 const frameErrors = async (pg) => (await Promise.all(pg.frames().map((f) => f.evaluate(() => window.__errs || []).catch(() => [])))).flat();
 
 const browser = await chromium.launch();
@@ -22,6 +24,7 @@ const errs = [];
 const p = await browser.newPage({ viewport: { width: 1500, height: 940 } });
 p.on('pageerror', (e) => errs.push(e.message));
 await p.addInitScript(trap);
+await p.addInitScript(seed, 'evals');
 await p.goto(page);
 await p.waitForTimeout(1500);
 
@@ -133,9 +136,35 @@ check(single.length === 1 && single[0] === 1500, 'workspace=single + menuBar=pla
 check(await f.$eval('.menubar .app-name', (e) => getComputedStyle(e).display !== 'none'), 'the v5 project menu bar comes back');
 await p.evaluate(() => { window.maiShell.setFlag('workspace', 'canvas'); window.maiShell.setFlag('menuBar', 'menus'); });
 
+// Screening Copilot story (prompt 0018): three skill projects in parallel and the release review
+const s = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+s.on('pageerror', (e) => errs.push(e.message));
+await s.addInitScript(trap);
+await s.addInitScript(seed, 'screening');
+await s.goto(page);
+await s.waitForTimeout(2000);
+const ids = await s.evaluate(() => window.maiShell.projects().map((x) => x.id));
+check(['scr-notes', 'scr-questions', 'scr-verify', 'release'].every((x) => ids.includes(x)), 'screening seed opens 3 skill projects and the release review');
+for (const id of ['scr-notes', 'scr-questions', 'scr-verify']) {
+  const fr = s.frame({ name: `proj-${id}` });
+  check((await fr.$$('.tl-card:not(.next)')).length === 4, `${id}: timeline shows the 4 steps`);
+}
+const vf = s.frame({ name: 'proj-scr-verify' });
+const vchips = await vf.$$eval('.checks', (cs) => cs.map((c) => c.textContent));
+check(vchips.some((t) => /F2P ✗/.test(t)) && vchips.some((t) => /F2P ✓/.test(t)), 'verify skill: F2P passes the cited red flags and fails the invented "verified" claims');
+const verdicts = await s.$$eval('[data-dbg="release-review"] tr.verdict td', (tds) => tds.map((t) => t.textContent));
+check(/^Ship/.test(verdicts[0]) && /human check/.test(verdicts[1]) && /Not yet/.test(verdicts[2]), `release scorecard: ${verdicts.map((v) => v.split(/[a-z](?=[A-Z])/)[0]).join(' / ')}`);
+await s.click('[data-dbg="release-tab:report"]'); await s.waitForTimeout(150);
+check(/checked by tool/.test(await s.textContent('[data-dbg="release-review"] .dview')), "screener's report shows the tool-checked claim");
+await s.click('[data-dbg="release-tab:delta"]'); await s.waitForTimeout(150);
+check((await s.$$('[data-dbg="release-review"] .delta')).length === 3, 'before → after covers the three skills');
+errs.push(...await frameErrors(s));
+await s.close();
+
 const m = await browser.newPage({ viewport: { width: 400, height: 860 }, colorScheme: 'dark' });
 m.on('pageerror', (e) => errs.push(e.message));
 await m.addInitScript(trap);
+await m.addInitScript(seed, 'screening');
 await m.goto(page);
 await m.waitForTimeout(1200);
 const [sw, iw] = await m.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);

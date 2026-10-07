@@ -367,3 +367,31 @@ like v4", "move prompt-suggestion above prompt-bar".
 
 ### Still the plan for the PoC backend
 Keys move to the server env for shared use. The browser path stays for single-user testing.
+
+---
+
+## v0.9 — 2026-10-07 — story: testing a Screening Copilot (prompt 0018, branch prototype/d071026-story-screening-agent)
+
+### Change to the plan
+- **Agent testing is a first-class use, not only prompt comparison.** A project can test one skill of an agent across
+  model builds, with:
+  - k repeated runs on a fixed case set, reporting pass@1, pass@k and pass^k per case;
+  - a triage step that maps every case below k/k to the kind of fix it needs;
+  - a fix step that changes only the harness (context, tools through MCP, configuration) and reruns the same set.
+- **Triage rule:**
+  - passes sometimes → reliability gap (configuration, task context, posttraining);
+  - never passes while other models do → capability gap (pretraining for missing knowledge, midtraining for a missing
+    skill, or another model);
+  - never passes for any model → information gap (tool access, data sources).
+- **Ship bars are pass^k thresholds set by stakes** (here: verify ≥ 90%, notes ≥ 80%, questions ≥ 75%). The verdicts
+  are Ship, Ship with a human check, and Not yet.
+- **A release review window** on the canvas aggregates the skill projects: the scorecard, the product's output after the
+  fixes (the screener's report), and before → after with "fixed in the harness" vs "left for model work".
+- **The canvas seed is a flag** (`seed`: `screening` | `evals`), so one build can open on different stories.
+
+### For the PoC backend
+- Batch runner: k × cases × variants, with per-run results stored under `runs/NN/<tab>/cases/<id>/<k>.json` and an
+  `evals/run-NN.json` holding pass@k and pass^k per case.
+- Case sets as files (transcripts plus expected red flags, protected-attribute traps, claims to verify). The regression
+  set grows from screener disagreements.
+- Nightly reruns with alerts when pass^k drops below a ship bar.

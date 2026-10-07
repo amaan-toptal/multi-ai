@@ -435,3 +435,41 @@ at the same content; the owner may delete it.
 3. Backend: keys in the server env, the same provider adapters server-side, a per-project state store.
 4. Verifier format modelled on promptfoo/Inspect, with SWE-bench's FAIL_TO_PASS and PASS_TO_PASS naming
    (see `alternatives.md`).
+
+---
+
+## Session 2, part 3 — 2026-10-07 — Screening Copilot story (model: Opus 5.5)
+
+**Prompt:** [0018](prompts/0018-2026-10-07-screening-agent-story.md) · **Branch:** `prototype/d071026-story-screening-agent`
+(spun off `prototype/v0.3-wip-eval-story` at 9191432) · **Story doc:** [docs/stories/screening-agent/README.md](docs/stories/screening-agent/README.md)
+
+### What changed (mockup v8)
+- **Story module**, in the app script before `STORIES` is resolved:
+  - data: `SCR_CASES`, `SCR_RAW` (Dana's call), `SCR_RUNS` (scripted passes out of 5 per call, before/after), `SCR_KIND`,
+    `SCR_REMEDY`, `SCR_THREADS`, `SCR_PROMPTS`, `SCR_HERO`;
+  - functions: `scrTriage` (the triage rule), `scrArt` (the four artifacts), `scrStory(thread)`.
+  - Three stories are registered: `scr_notes`, `scr_questions`, `scr_verify`.
+- **New story hooks:**
+  - `beforeSend(text)`: harness changes applied as part of a step;
+  - `metrics()`: results sent to the shell with each status message.
+- **Shell:**
+  - `SEEDS` by flag `seed`;
+  - `addDash` / `renderDash`: the release review window (no iframe; it reads `p.s.metrics` of the skill projects);
+  - File menu entries for guided replays of each skill.
+- **Docs and tests:**
+  - `docs/stories/screening-agent/`: README (concept, 4 steps, close, talk track), 9 screenshots, and `shots.mjs`
+    (`npm run story:screening`);
+  - `check.mjs`: seeds pinned per section, plus 8 screening checks.
+
+### How to verify
+1. Run `npm test && npm run check:mockup` (49 of 49).
+2. Open `docs/mockup/index.html`. The canvas shows three skill projects and the release review.
+3. In the verify project, open Artifacts and step through runs 1–4.
+4. In the release review, click through Scorecard → Screener's report → Before → after.
+5. To replay a skill live, use File → Screening Copilot → (skill), then press "Use and send" three times.
+
+### Next steps
+1. Owner review of the story and talk track; adjust ship bars, verdicts or calls to taste.
+2. Make it real: a batch runner for k × cases × builds, then case files with labelled red flags and traps, then the
+   rubric calibrated on screener labels.
+3. Decide whether this story merges back into the v0.3 line or stays a spinoff.

@@ -12,7 +12,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test test/*.test.js",
-    "check:mockup": "node docs/mockup/check.mjs"
+    "check:mockup": "node docs/mockup/check.mjs",
+    "story:screening": "node docs/stories/screening-agent/shots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
